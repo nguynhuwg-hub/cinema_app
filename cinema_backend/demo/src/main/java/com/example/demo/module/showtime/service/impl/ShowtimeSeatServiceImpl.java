@@ -10,6 +10,7 @@ import com.example.demo.module.showtime.service.ShowtimeSeatService;
 import com.example.demo.module.user.entity.User;
 import com.example.demo.module.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ public class ShowtimeSeatServiceImpl implements ShowtimeSeatService {
 
     private final ShowtimeSeatRepository showtimeSeatRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate; // Tiêm WebSocket messaging template
 
     @Override
     @Transactional(readOnly = true)
@@ -73,7 +75,12 @@ public class ShowtimeSeatServiceImpl implements ShowtimeSeatService {
         });
 
         List<ShowtimeSeat> updatedSeats = showtimeSeatRepository.saveAll(seats);
-        return updatedSeats.stream().map(this::mapToResponse).toList();
+        List<ShowtimeSeatResponse> responseList = updatedSeats.stream().map(this::mapToResponse).toList();
+
+        // Gửi event WebSocket tới tất cả client đang theo dõi lịch chiếu (Real-time update)
+        messagingTemplate.convertAndSend("/topic/showtimes/" + showtimeId + "/seats", responseList);
+
+        return responseList;
     }
 
     private ShowtimeSeatResponse mapToResponse(ShowtimeSeat seat) {
