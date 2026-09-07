@@ -15,11 +15,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import java.util.List;
-
 
 @Configuration
 @EnableWebSecurity
@@ -48,11 +43,22 @@ public class SecurityConfig {
             // 2. Không lưu Session trên Server (Stateless JWT)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             
-            // 3. Cấu hình Phân quyền API (Dùng chuỗi String trực tiếp, không cần AntPathRequestMatcher)
+            // 3. Cấu hình Phân quyền API
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Cho phép tất cả request Preflight từ React/Mobile
-                .requestMatchers("/api/v1/auth/**").permitAll()        // Mở toàn bộ API Auth
-                .anyRequest().authenticated()                           // Tất cả API khác cần Token
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Preflight
+                .requestMatchers("/api/v1/auth/**").permitAll()        // Auth APIs
+                .requestMatchers("/ws-cinema/**").permitAll()          // WebSocket STOMP Handshake
+                .requestMatchers("/api/cinemas/**").permitAll()        // Cinema module APIs
+                .requestMatchers("/api/cities/**").permitAll()
+                .requestMatchers("/api/halls/**").permitAll()
+                .requestMatchers("/api/seats/**").permitAll()
+                .requestMatchers("/api/v1/movies/**").permitAll()      // Movie module APIs
+                .requestMatchers("/api/v1/genres/**").permitAll()
+                .requestMatchers("/api/v1/showtimes/**").permitAll()   // Showtime module APIs
+                .requestMatchers("/api/v1/users/**").authenticated()
+                .requestMatchers("/api/v1/notifications/**").authenticated()
+                .requestMatchers("/api/v1/roles/**").permitAll()
+                .anyRequest().authenticated()                          // Các API khác ngoài danh sách trên cần Token
             );
 
         // 4. Đặt JwtAuthenticationFilter trước UsernamePasswordAuthenticationFilter
@@ -60,16 +66,4 @@ public class SecurityConfig {
 
         return http.build();
     }
-    @Bean
-public CorsConfigurationSource corsConfigurationSource() {
-    CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000")); // URL của React Web
-    configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-    configuration.setAllowedHeaders(List.of("*"));
-    configuration.setAllowCredentials(true);
-
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/**", configuration);
-    return source;
-}
 }
