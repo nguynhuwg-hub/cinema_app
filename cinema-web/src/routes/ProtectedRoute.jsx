@@ -2,7 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const ProtectedRoute = ({ allowedRoles }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, hasRole } = useAuth();
 
   // 1. Nếu chưa đăng nhập -> Đẩy về trang /login
   if (!isAuthenticated) {
@@ -10,7 +10,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
   }
 
   // 2. Nếu có yêu cầu Vai trò (Role) và User không thuộc Vai trò đó -> Đẩy về Trang chủ
-  if (allowedRoles && !allowedRoles.includes(user?.role)) {
+  if (allowedRoles && !allowedRoles.some((role) => hasRole(role))) {
     return <Navigate to="/" replace />;
   }
 

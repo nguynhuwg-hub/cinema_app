@@ -43,13 +43,23 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem(STORAGE_KEYS.USER_INFO);
   };
 
+  const hasRole = (role) => {
+    const roles = user?.roles || user?.role || [];
+    const normalizedRoles = Array.isArray(roles) ? roles : [roles];
+    return normalizedRoles.some((item) => {
+      const value = typeof item === 'string' ? item : item?.name;
+      return value === role || value === `ROLE_${role}`;
+    });
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
         token,
         isAuthenticated: !!token,
-        isAdmin: user?.role === 'ROLE_ADMIN',
+        isAdmin: hasRole('ADMIN'),
+        hasRole,
         loading,
         login,
         logout,

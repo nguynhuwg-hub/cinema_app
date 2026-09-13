@@ -1,9 +1,22 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './routes/ProtectedRoute';
-import MainLayout from './components/layout/MainLayout';
-import AdminLayout from './components/layout/AdminLayout';
-import { ROLES } from './utils/constants';
+
+// Import đúng đường dẫn theo cấu trúc thư mục mới
+import MainLayout from './components/layout/MainLayout/MainLayout';
+import AdminLayout from './components/layout/AdminLayout/AdminLayout';
+
+import ProfilePage from './features/user/pages/ProfilePage';
+import UserManagementPage from './features/user/pages/UserManagementPage';
+import MovieListPage from './features/movie/pages/MovieListPage';
+import MovieDetailPage from './features/movie/pages/MovieDetailPage';
+import CinemaListPage from './features/cinema/pages/CinemaListPage';
+import CinemaShowtimesPage from './features/cinema/pages/CinemaShowtimesPage';
+import ShowtimeDetailPage from './features/showtime/pages/ShowtimeDetailPage';
+import AdminDashboardPage from './features/admin/pages/AdminDashboardPage';
+import MovieManagementPage from './features/admin/pages/MovieManagementPage';
+import CinemaManagementPage from './features/admin/pages/CinemaManagementPage';
+import ShowtimeManagementPage from './features/admin/pages/ShowtimeManagementPage';
+import NotificationsPage from './features/user/pages/NotificationsPage';
 
 function App() {
   return (
@@ -12,29 +25,26 @@ function App() {
         <Routes>
           {/* Giao diện dành cho Khách & User (Dùng MainLayout) */}
           <Route element={<MainLayout />}>
-            <Route path="/" element={<div>Trang Chủ - Danh Sách Phim</div>} />
-            <Route path="/login" element={<div>Trang Đăng Nhập</div>} />
-            <Route path="/register" element={<div>Trang Đăng Ký</div>} />
-            <Route path="/movies/:id" element={<div>Trang Chi Tiết Phim</div>} />
-            <Route path="/cinemas" element={<div>Trang Cụm Rạp</div>} />
+            <Route path="/" element={<MovieListPage />} />
+            <Route path="/movies/:id" element={<MovieDetailPage />} />
+            <Route path="/showtimes/:id" element={<ShowtimeDetailPage />} />
+            <Route path="/cinemas" element={<CinemaListPage />} />
+            <Route path="/cinemas/:id/showtimes" element={<CinemaShowtimesPage />} />
 
-            {/* Trang cần Đăng nhập */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/profile" element={<div>Trang Thông Tin Cá Nhân</div>} />
-            </Route>
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
           </Route>
 
           {/* Giao diện dành cho Admin (Dùng AdminLayout) */}
-          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
-            <Route element={<AdminLayout />}>
-              <Route path="/admin/dashboard" element={<div>Trang Dashboard Tổng Quan</div>} />
-              <Route path="/admin/movies" element={<div>Trang Quản Lý Phim</div>} />
-              <Route path="/admin/cinemas" element={<div>Trang Quản Lý Rạp</div>} />
-              <Route path="/admin/users" element={<div>Trang Quản Lý Người Dùng</div>} />
-            </Route>
+          <Route element={<AdminLayout />}>
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/movies" element={<MovieManagementPage />} />
+              <Route path="/admin/cinemas" element={<CinemaManagementPage />} />
+              <Route path="/admin/showtimes" element={<ShowtimeManagementPage />} />
+              <Route path="/admin/users" element={<UserManagementPage />} />
           </Route>
 
-          {/* Fallback route */}
+          {/* Fallback route khi gõ sai đường dẫn */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

@@ -3,7 +3,8 @@ import { STORAGE_KEYS } from '../utils/constants';
 
 // 1. Khởi tạo instance của Axios
 const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  // Empty base URL keeps browser requests same-origin so Vite proxies /api to Spring Boot.
+  baseURL: import.meta.env.VITE_API_BASE_URL || '',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -27,10 +28,8 @@ axiosClient.interceptors.request.use(
   }
 );
 
-// 3. Response Interceptor: Chạy sau khi nhận response từ Backend
 axiosClient.interceptors.response.use(
   (response) => {
-    // Trả về trực tiếp response.data giúp việc gọi API ở các component ngắn gọn hơn
     return response.data;
   },
   (error) => {
@@ -43,37 +42,10 @@ axiosClient.interceptors.response.use(
         localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
         localStorage.removeItem(STORAGE_KEYS.USER_INFO);
         
-        // Điều hướng về trang login nếu không ở trang login
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
+        // Auth is intentionally not part of this frontend slice.
       }
     }
 
-    return Promise.reject(error);
-  }
-);
-
-axiosClient.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
-    if (error.response) {
-      const { status } = error.response;
-
-      // 401: Token hết hạn hoặc chưa gửi Token -> Xóa session và về Login
-      if (status === 401) {
-        localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-        localStorage.removeItem(STORAGE_KEYS.USER_INFO);
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
-      }
-
-      // 403: Đã đăng nhập nhưng không đủ quyền truy cập API này
-      if (status === 403) {
-        alert('Bạn không có quyền thực hiện thao tác này!');
-      }
-    }
     return Promise.reject(error);
   }
 );
