@@ -1,10 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 
-// Import đúng đường dẫn theo cấu trúc thư mục mới
 import MainLayout from './components/layout/MainLayout/MainLayout';
 import AdminLayout from './components/layout/AdminLayout/AdminLayout';
 
+import LoginPage from './features/auth/pages/LoginPage';
+import RegisterPage from './features/auth/pages/RegisterPage';
 import ProfilePage from './features/user/pages/ProfilePage';
 import UserManagementPage from './features/user/pages/UserManagementPage';
 import MovieListPage from './features/movie/pages/MovieListPage';
@@ -31,6 +32,8 @@ function App() {
             <Route path="/cinemas" element={<CinemaListPage />} />
             <Route path="/cinemas/:id/showtimes" element={<CinemaShowtimesPage />} />
 
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
           </Route>

@@ -44,15 +44,21 @@ const MainLayout = () => {
             <Link to="/" className={`main-nav-link ${location.pathname === '/' ? 'active' : ''}`}>Phim</Link>
             <Link to="/cinemas" className={`main-nav-link ${location.pathname.startsWith('/cinemas') ? 'active' : ''}`}>Cụm Rạp</Link>
 
-            {isAuthenticated && <>
-              <Link to="/profile" className={`main-nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>Hồ sơ</Link>
-              <Link to="/notifications" className={`main-nav-link ${location.pathname === '/notifications' ? 'active' : ''}`}>Thông báo</Link>
+            {isAuthenticated ? (
+              <>
+                <Link to="/profile" className={`main-nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>Hồ sơ</Link>
+                <Link to="/notifications" className={`main-nav-link ${location.pathname === '/notifications' ? 'active' : ''}`}>Thông báo</Link>
               {isAdmin && <Link to="/admin/dashboard" className="admin-link">Quản trị</Link>}
-            </>}
-            {import.meta.env.DEV && <button className="dev-token-button" onClick={() => setShowTokenPanel(!showTokenPanel)}>{isAuthenticated ? `Đã nạp: ${user?.fullName || user?.email}` : 'Nạp token dev'}</button>}
-          </nav>
+                <button onClick={logout} className="logout-button">Đăng xuất</button>
+              </>
+          ) : (
+            <div className="auth-buttons">
+                <Link to="/login" className="login-button">Đăng nhập</Link>
+                <Link to="/register" className="register-button">Đăng ký</Link>
+            </div>
+         )}
+        </nav>
         </div>
-        {import.meta.env.DEV && showTokenPanel && <form className="dev-token-panel" onSubmit={saveTestToken}><label>Access token từ Postman<input value={tokenInput} onChange={(event) => setTokenInput(event.target.value)} placeholder="Dán token hoặc Bearer token" /></label><div><button className="primary-button">Lưu & kiểm tra token</button>{isAuthenticated && <button type="button" className="text-button" onClick={() => { logout(); setTokenMessage('Đã xóa token test.'); }}>Xóa token</button>}</div>{tokenMessage && <small>{tokenMessage}</small>}</form>}
       </header>
 
       {/* Main Content */}
