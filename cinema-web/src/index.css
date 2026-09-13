@@ -332,3 +332,142 @@ body { background: #141414; color: var(--ink); }
   line-height: 1.6;
   color: #6b7280;
 }
+/* ==========================================
+   AUTH BUTTONS (ĐĂNG NHẬP / ĐĂNG KÝ RỰC RỠ)
+   ========================================== */
+
+/* Container chứa 2 nút */
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Base style chung cho cả 2 nút */
+.login-button,
+.register-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 22px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-radius: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* 1. NÚT ĐĂNG NHẬP (Phong cách Neon Pink-Violet Magic) */
+.login-button {
+  color: #ffffff;
+  background: transparent;
+  border: 2px solid transparent;
+  background-image: linear-gradient(#000000, #0f0f13), 
+                    linear-gradient(135deg, #FF0055 0%, #FFE600 50%, #FF5500 100%);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
+}
+.login-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.6s ease;
+  z-index: -1;
+}
+.login-button:hover::before {
+  left: 100%;
+}
+
+.login-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.login-button:hover {
+  transform: translateY(-2px);
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.6),
+              0 0 35px rgba(168, 85, 247, 0.4);
+}
+
+.login-button:active {
+  transform: translateY(0);
+}
+
+/* 2. NÚT ĐĂNG KÝ (Phong cách Cyberpunk Crimson Glow - Nổi bật nhất) */
+.register-button {
+  color: #ffffff;
+  background: transparent;
+  border: 2px solid transparent;
+  background-image: linear-gradient(#0f0f13, #0f0f13), 
+                    linear-gradient(135deg, #39FF14 0%, #FFE600 50%, #004D40 100%);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
+}
+
+/* Hiệu ứng quang phổ lướt nhẹ qua button đăng ký */
+.register-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.6s ease;
+  z-index: -1;
+}
+
+.register-button:hover {
+  background-position: right center; /* Cuộn dải màu Gradient */
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 6px 25px rgba(255, 0, 85, 0.7),
+              0 0 40px rgba(255, 80, 0, 0.5);
+}
+
+.register-button:hover::before {
+  left: 100%;
+}
+
+.register-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* NÚT ĐĂNG XUẤT (Tùy chọn bổ sung để đồng bộ UI) */
+.logout-button {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.logout-button:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
