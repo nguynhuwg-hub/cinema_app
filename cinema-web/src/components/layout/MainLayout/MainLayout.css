@@ -1,0 +1,174 @@
+/* Bố cục trang tổng */
+.main-layout-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.main-header {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  padding: 1rem 2rem;
+}
+
+.main-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.main-logo {
+  color: #e50914;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+/* Navigation */
+.main-nav {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.main-nav-link {
+  color: #ffffff;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.main-nav-link:hover {
+  color: #e50914;
+}
+
+.main-nav-link.active {
+  color: #fff;
+  font-weight: 700;
+}
+
+.dev-token-button {
+  border: 1px solid #555;
+  background: transparent;
+  color: #bbb;
+  padding: .45rem .7rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: .78rem;
+}
+
+.dev-token-button:hover {
+  border-color: #e50914;
+  color: #fff;
+}
+
+.dev-token-panel {
+  position: absolute;
+  right: max(1rem, calc((100vw - 1320px) / 2));
+  top: 4.2rem;
+  z-index: 20;
+  width: min(420px, calc(100vw - 2rem));
+  display: grid;
+  gap: .7rem;
+  padding: 1rem;
+  background: #1c1c1c;
+  border: 1px solid #444;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
+}
+
+.dev-token-panel label {
+  display: grid;
+  gap: .4rem;
+  color: #bbb;
+  font-size: .8rem;
+}
+
+.dev-token-panel input {
+  width: 100%;
+  padding: .65rem;
+  background: #282828;
+  border: 1px solid #555;
+  color: #fff;
+  font: inherit;
+}
+
+.dev-token-panel small {
+  color: #8ed18e;
+}
+
+/* Auth Actions (Đã đăng nhập) */
+.user-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.user-profile-link {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.admin-link {
+  color: #ffc107;
+  text-decoration: none;
+}
+
+.logout-btn {
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  background-color: transparent;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background-color: #e50914;
+  border-color: #e50914;
+}
+
+/* Guest Actions (Chưa đăng nhập) */
+.guest-actions {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.login-link {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.register-link {
+  color: #e50914;
+  text-decoration: none;
+}
+
+/* Main Content Area */
+.main-content {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+/* Footer */
+.main-footer {
+  background-color: #111111;
+  color: #888888;
+  text-align: center;
+  padding: 1.5rem;
+  margin-top: auto;
+}
+
+.notification-link {
+  color: #d7d7d7;
+  text-decoration: none;
+}
+
+.notification-link:hover {
+  color: #fff;
+}

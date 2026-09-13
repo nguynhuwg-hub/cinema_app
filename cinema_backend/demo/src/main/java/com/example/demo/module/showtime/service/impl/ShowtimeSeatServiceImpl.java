@@ -73,7 +73,7 @@ public class ShowtimeSeatServiceImpl implements ShowtimeSeatService {
                 seat.setHoldExpiresAt(null);
             }
         });
-
+        
         List<ShowtimeSeat> updatedSeats = showtimeSeatRepository.saveAll(seats);
         List<ShowtimeSeatResponse> responseList = updatedSeats.stream().map(this::mapToResponse).toList();
 
@@ -89,6 +89,7 @@ public class ShowtimeSeatServiceImpl implements ShowtimeSeatService {
                 .showtimeId(seat.getShowtime().getId())
                 .seatId(seat.getSeat().getId())
                 .seatNumber(seat.getSeat().getSeatRow() + seat.getSeat().getSeatNumber())
+                .seatType(seat.getSeat().getSeatType())
                 .status(seat.getStatus())
                 .heldByUserId(seat.getHeldByUser() != null ? seat.getHeldByUser().getId() : null)
                 .heldByUserName(seat.getHeldByUser() != null ? seat.getHeldByUser().getFullName() : null)

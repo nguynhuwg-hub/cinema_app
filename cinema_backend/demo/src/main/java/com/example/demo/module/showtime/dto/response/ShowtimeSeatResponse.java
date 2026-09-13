@@ -1,6 +1,7 @@
 package com.example.demo.module.showtime.dto.response;
 
 import com.example.demo.entity.enums.SeatStatus;
+import com.example.demo.common.enums.SeatType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,7 @@ public class ShowtimeSeatResponse {
     private Long showtimeId;
     private Long seatId;
     private String seatNumber; 
+    private SeatType seatType;
     private SeatStatus status;
     private Long heldByUserId;
     private String heldByUserName;
