@@ -25,86 +25,99 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private RoleRepository roleRepository;
+    private final RoleRepository roleRepository;
 
-    @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
-    @Autowired
-    private EmailVerificationRepository emailVerificationRepository;
+    private final EmailVerificationRepository emailVerificationRepository;
 
-    @Autowired
-    private LoginAttemptRepository loginAttemptRepository;
+    private final LoginAttemptRepository loginAttemptRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private JwtTokenProvider tokenProvider;
+    private final JwtTokenProvider tokenProvider;
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+    private final AuthenticationManager authenticationManager;
+
+    private final EmailService emailService;
 
     @Override
-    @Transactional
-    public String register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email đã được sử dụng!");
-        }
-
-        Role userRole = roleRepository.findByName(RoleName.ROLE_CUSTOMER)
-                .orElseThrow(() -> new BadRequestException("Role không tồn tại!"));
-
-        User user = User.builder()
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .fullName(request.getFullName())
-                .phone(request.getPhone())
-                .status(AccountStatus.PENDING_VERIFICATION)
-                .roles(Collections.singleton(userRole))
-                .build();
-
-        userRepository.save(user);
-
-        // Tạo Email Verification Token
-        String token = UUID.randomUUID().toString();
-        EmailVerification verification = EmailVerification.builder()
-                .user(user)
-                .token(token)
-                .expiresAt(LocalDateTime.now().plusMinutes(30))
-                .build();
-
-        emailVerificationRepository.save(verification);
-
-        return token; 
+@Transactional
+public String register(RegisterRequest request) {
+    // 1. Kiểm tra Email tồn tại
+    if (userRepository.existsByEmail(request.getEmail())) {
+        throw new BadRequestException("Email đã được sử dụng!");
     }
 
-    @Override
-    @Transactional
-    public String verifyEmail(String token) {
-        EmailVerification verification = emailVerificationRepository.findByToken(token)
-                .orElseThrow(() -> new BadRequestException("Mã xác thực không hợp lệ!"));
+    // 2. Tìm Role mặc định cho Khách hàng
+    Role userRole = roleRepository.findByName(RoleName.ROLE_CUSTOMER)
+            .orElseThrow(() -> new BadRequestException("Role không tồn tại!"));
 
-        if (verification.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("Mã xác thực đã hết hạn!");
-        }
+    // 3. Khởi tạo và lưu User ở trạng thái chờ xác thực
+    User user = User.builder()
+            .email(request.getEmail())
+            .passwordHash(passwordEncoder.encode(request.getPassword()))
+            .fullName(request.getFullName())
+            .phone(request.getPhone())
+            .status(AccountStatus.PENDING_VERIFICATION)
+            .emailVerified(false)
+            .roles(Collections.singleton(userRole))
+            .build();
 
-        User user = verification.getUser();
-        user.setStatus(AccountStatus.ACTIVE);
-        user.setEmailVerified(true);
-        userRepository.save(user);
+    userRepository.save(user);
 
-        emailVerificationRepository.delete(verification);
-        return "Xác minh tài khoản thành công!";
+    // 4. Tạo Email Verification Token (Thời hạn 30 phút)
+    String token = UUID.randomUUID().toString();
+    EmailVerification verification = EmailVerification.builder()
+            .user(user)
+            .token(token)
+            .expiresAt(LocalDateTime.now().plusMinutes(30))
+            .build();
+
+    emailVerificationRepository.save(verification);
+
+    // 5. BỔ SUNG: Gửi email chứa link kích hoạt thực tế cho người dùng
+    emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), token);
+
+    return token; 
+}
+
+@Override
+@Transactional
+public String verifyEmail(String token) {
+    // 1. Tìm token trong database
+    EmailVerification verification = emailVerificationRepository.findByToken(token)
+            .orElseThrow(() -> new BadRequestException("Mã xác thực không hợp lệ!"));
+
+    // 2. Kiểm tra thời hạn của token
+    if (verification.getExpiresAt().isBefore(LocalDateTime.now())) {
+        throw new BadRequestException("Mã xác thực đã hết hạn!");
     }
+
+    // 3. Cập nhật trạng thái người dùng
+    User user = verification.getUser();
+    
+    if (user.isEmailVerified()) {
+        throw new BadRequestException("Tài khoản này đã được xác thực trước đó!");
+    }
+
+    user.setStatus(AccountStatus.ACTIVE);
+    user.setEmailVerified(true);
+    userRepository.save(user);
+
+    // 4. Xóa token sau khi đã kích hoạt thành công
+    emailVerificationRepository.delete(verification);
+    
+    return "Xác minh tài khoản thành công! Bây giờ bạn có thể đăng nhập.";
+}
 
    @Override
     @Transactional
@@ -148,17 +161,28 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = tokenProvider.generateTokenFromUser(user);
         String rawRefreshToken = UUID.randomUUID().toString();
 
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
-                .tokenHash(hashString(rawRefreshToken))
-                .deviceName(httpRequest.getHeader("User-Agent"))
-                .ipAddress(clientIp)
-                .userAgent(httpRequest.getHeader("User-Agent"))
-                .expiresAt(LocalDateTime.now().plusDays(7))
-                .revoked(false)
-                .build();
+       // 1. Tạo chuỗi Refresh Token ngẫu nhiên
+String newRawRefreshToken = UUID.randomUUID().toString(); // Hoặc dùng helper generateToken() của bạn
 
-        refreshTokenRepository.save(refreshToken);
+// 2. Trích xuất và cắt ngắn User-Agent
+String rawUserAgent = httpRequest.getHeader("User-Agent");
+String deviceName = (rawUserAgent != null && rawUserAgent.length() > 255) 
+        ? rawUserAgent.substring(0, 250) 
+        : rawUserAgent;
+
+// 3. Khởi tạo đối tượng RefreshToken
+RefreshToken newToken = RefreshToken.builder()
+        .user(user)
+        .tokenHash(hashString(newRawRefreshToken)) // Biến newRawRefreshToken đã được giải quyết
+        .deviceName(deviceName)
+        .ipAddress(getClientIp(httpRequest))
+        .userAgent(rawUserAgent)
+        .expiresAt(LocalDateTime.now().plusDays(7))
+        .revoked(false)
+        .build();
+
+// 4. Lưu vào cơ sở dữ liệu
+refreshTokenRepository.save(newToken);
 
         // Lấy danh sách Roles trả ra JSON Response ngoài
         Set<String> roles = user.getRoles().stream()

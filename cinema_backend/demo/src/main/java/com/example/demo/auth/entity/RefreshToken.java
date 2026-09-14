@@ -27,7 +27,7 @@ public class RefreshToken {
     @Column(name = "token_hash", nullable = false, length = 64)
     private String tokenHash;
 
-    @Column(name = "device_name", length = 100)
+    @Column(name = "device_name", length = 512)
     private String deviceName;
 
     @Column(name = "ip_address", length = 45)
