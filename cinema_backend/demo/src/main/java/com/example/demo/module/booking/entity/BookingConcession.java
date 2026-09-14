@@ -1,9 +1,11 @@
-package com.example.demo.entity;
+package com.example.demo.module.booking.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+
+import com.example.demo.entity.Concession;
 
 @Entity
 @Table(name = "booking_concessions")
