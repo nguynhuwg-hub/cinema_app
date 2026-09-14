@@ -14,4 +14,5 @@ public class SeatResponse {
     private String fullSeatName;// Ví dụ: "A1"
     private SeatType seatType;  // REGULAR, VIP, SWEETBOX
     private Long hallId;
+    private Double price;
 }

@@ -8,5 +8,5 @@ import java.util.List;
 
 public interface ShowtimeSeatService {
     SeatLayoutResponse getSeatLayoutByShowtimeId(Long showtimeId);
-    List<ShowtimeSeatResponse> updateSeatStatus(Long showtimeId, UpdateSeatStatusRequest request);
+    List<ShowtimeSeatResponse> updateSeatStatus(Long showtimeId, UpdateSeatStatusRequest request, String emailOrUsername);
 }

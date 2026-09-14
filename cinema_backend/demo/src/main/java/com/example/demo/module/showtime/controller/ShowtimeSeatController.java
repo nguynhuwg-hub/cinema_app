@@ -7,6 +7,7 @@ import com.example.demo.module.showtime.service.ShowtimeSeatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,8 +28,18 @@ public class ShowtimeSeatController {
     @PatchMapping("/status")
     public ResponseEntity<List<ShowtimeSeatResponse>> updateSeatStatus(
             @PathVariable Long showtimeId,
-            @Valid @RequestBody UpdateSeatStatusRequest request) {
-        List<ShowtimeSeatResponse> responses = showtimeSeatService.updateSeatStatus(showtimeId, request);
+            @Valid @RequestBody UpdateSeatStatusRequest request,
+            Authentication authentication) { // Lấy token context của user
+        
+        // Giả định Username/Email được lưu làm Principal trong Token
+        String currentUserIdentifier = authentication.getName(); 
+        
+        // Truyền thông tin user xuống Service để gán ghế
+        List<ShowtimeSeatResponse> responses = showtimeSeatService.updateSeatStatus(
+                showtimeId, 
+                request, 
+                currentUserIdentifier
+        );
         return ResponseEntity.ok(responses);
     }
 }
