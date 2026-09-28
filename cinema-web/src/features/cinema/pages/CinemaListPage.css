@@ -1,0 +1,180 @@
+/* Layout tổng thể */
+.page-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+  animation: fadeInDown 0.5s ease-out;
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #4f46e5;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+}
+
+.search-input {
+  padding: 0.6rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background-color: #000000;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+/* Grid hiển thị rạp */
+.cinema-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Thẻ Rạp + Hiệu ứng Hover & Stagger */
+.cinema-card {
+  background: linear-gradient(90deg, #3749a4 0%, #3d24dd 100%);
+  border: 1px solid #f9fff1;
+  border-radius: 12px;
+  padding: 1.5rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(229, 9, 20, 0.25);
+  
+  /* Hiệu ứng xuất hiện mềm mại */
+  animation: fadeInUp 0.5s ease-out forwards;
+  opacity: 0;
+  
+  /* Chuyển động khi Hover */
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+/* Viền sáng gradient phía trên thẻ khi hover */
+.cinema-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #4f46e5, #ec4899);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.cinema-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.15);
+}
+
+.cinema-card:hover::before {
+  opacity: 1;
+}
+
+/* Tạo độ trễ hiệu ứng xuất hiện (Stagger effect) cho từng card */
+.cinema-card:nth-child(1) { animation-delay: 0.05s; }
+.cinema-card:nth-child(2) { animation-delay: 0.10s; }
+.cinema-card:nth-child(3) { animation-delay: 0.15s; }
+.cinema-card:nth-child(4) { animation-delay: 0.20s; }
+.cinema-card:nth-child(5) { animation-delay: 0.25s; }
+.cinema-card:nth-child(6) { animation-delay: 0.30s; }
+
+/* Nút bấm & Mũi tên chuyển động */
+.cinema-showtimes-link {
+  margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid #000000;
+  background: #17172e;
+  color: #f2f2f4;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.cinema-showtimes-link:hover {
+  background-color: #4f46e5;
+  color: #ffffff;
+}
+
+.cinema-showtimes-link .arrow {
+  transition: transform 0.2s ease;
+}
+
+.cinema-showtimes-link:hover .arrow {
+  transform: translateX(4px);
+}
+
+/* Skeleton Loading Animation */
+.skeleton-card {
+  height: 180px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-card::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+/* Keyframe Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+h2{
+    color:#000000;
+}
+.eyebrow{
+    color:#ffffff;
+    font-size: 20px;
+}

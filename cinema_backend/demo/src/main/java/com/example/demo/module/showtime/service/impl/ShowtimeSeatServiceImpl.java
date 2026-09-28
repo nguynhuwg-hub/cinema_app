@@ -23,12 +23,30 @@ public class ShowtimeSeatServiceImpl implements ShowtimeSeatService {
 
     private final ShowtimeSeatRepository showtimeSeatRepository;
     private final UserRepository userRepository;
-    private final SimpMessagingTemplate messagingTemplate; // Tiêm WebSocket messaging template
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public SeatLayoutResponse getSeatLayoutByShowtimeId(Long showtimeId) {
         List<ShowtimeSeat> seats = showtimeSeatRepository.findByShowtimeIdWithDetails(showtimeId);
+        LocalDateTime now = LocalDateTime.now();
+
+        // Tự động xả các ghế HELD đã hết hạn 15 phút
+        boolean isUpdated = false;
+        for (ShowtimeSeat seat : seats) {
+            if (SeatStatus.HELD.equals(seat.getStatus()) 
+                    && seat.getHoldExpiresAt() != null 
+                    && seat.getHoldExpiresAt().isBefore(now)) {
+                seat.setStatus(SeatStatus.AVAILABLE);
+                seat.setHeldByUser(null);
+                seat.setHoldExpiresAt(null);
+                isUpdated = true;
+            }
+        }
+
+        if (isUpdated) {
+            seats = showtimeSeatRepository.saveAll(seats);
+        }
 
         List<ShowtimeSeatResponse> seatResponses = seats.stream()
                 .map(this::mapToResponse)
@@ -48,36 +66,58 @@ public class ShowtimeSeatServiceImpl implements ShowtimeSeatService {
 
     @Override
     @Transactional
-    public List<ShowtimeSeatResponse> updateSeatStatus(Long showtimeId, UpdateSeatStatusRequest request) {
+    public List<ShowtimeSeatResponse> updateSeatStatus(Long showtimeId, UpdateSeatStatusRequest request, String emailOrUsername) {
         List<ShowtimeSeat> seats = showtimeSeatRepository.findByShowtimeIdAndIdIn(
                 showtimeId, request.getShowtimeSeatIds());
 
         if (seats.size() != request.getShowtimeSeatIds().size()) {
-            throw new IllegalArgumentException("Some seats do not belong to showtime id: " + showtimeId);
+            throw new IllegalArgumentException("Một số ghế không thuộc về suất chiếu id: " + showtimeId);
         }
 
-        User user = null;
-        if (request.getUserId() != null) {
-            user = userRepository.findById(request.getUserId())
-                    .orElseThrow(() -> new RuntimeException("User not found with id: " + request.getUserId()));
-        }
+        // Lấy User từ Token thay vì request
+        User user = userRepository.findByEmail(emailOrUsername)
+                .orElseGet(() -> userRepository.findByEmail(emailOrUsername)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng: " + emailOrUsername)));
 
-        User finalUser = user;
-        seats.forEach(seat -> {
-            seat.setStatus(request.getStatus());
-            if (SeatStatus.HELD.equals(request.getStatus())) {
-                seat.setHeldByUser(finalUser);
-                seat.setHoldExpiresAt(LocalDateTime.now().plusMinutes(10)); // Giữ ghế trong 10 phút
-            } else if (SeatStatus.AVAILABLE.equals(request.getStatus())) {
+        LocalDateTime now = LocalDateTime.now();
+
+        if (SeatStatus.HELD.equals(request.getStatus())) {
+            for (ShowtimeSeat seat : seats) {
+                // Kiểm tra nếu ghế đang được người khác giữ và CHƯA hết hạn
+                if (SeatStatus.HELD.equals(seat.getStatus()) 
+                        && seat.getHoldExpiresAt() != null 
+                        && seat.getHoldExpiresAt().isAfter(now)
+                        && seat.getHeldByUser() != null 
+                        && !seat.getHeldByUser().getId().equals(user.getId())) {
+                    throw new IllegalStateException("Ghế " + seat.getSeat().getSeatRow() + seat.getSeat().getSeatNumber() + " đang được người khác giữ.");
+                }
+
+                // Kiểm tra nếu ghế đã bán/khóa
+                if (SeatStatus.BOOKED.equals(seat.getStatus()) || SeatStatus.HELD.equals(seat.getStatus())) {
+                    throw new IllegalStateException("Ghế " + seat.getSeat().getSeatRow() + seat.getSeat().getSeatNumber() + " không còn khả dụng.");
+                }
+
+                // Cập nhật trạng thái giữ ghế trong 15 phút
+                seat.setStatus(SeatStatus.HELD);
+                seat.setHeldByUser(user);
+                seat.setHoldExpiresAt(now.plusMinutes(15));
+            }
+        } else if (SeatStatus.AVAILABLE.equals(request.getStatus())) {
+            for (ShowtimeSeat seat : seats) {
+                seat.setStatus(SeatStatus.AVAILABLE);
                 seat.setHeldByUser(null);
                 seat.setHoldExpiresAt(null);
             }
-        });
-        
+        } else {
+            for (ShowtimeSeat seat : seats) {
+                seat.setStatus(request.getStatus());
+            }
+        }
+
         List<ShowtimeSeat> updatedSeats = showtimeSeatRepository.saveAll(seats);
         List<ShowtimeSeatResponse> responseList = updatedSeats.stream().map(this::mapToResponse).toList();
 
-        // Gửi event WebSocket tới tất cả client đang theo dõi lịch chiếu (Real-time update)
+        // Gửi event WebSocket tới tất cả client đang theo dõi
         messagingTemplate.convertAndSend("/topic/showtimes/" + showtimeId + "/seats", responseList);
 
         return responseList;

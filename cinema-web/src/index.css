@@ -259,7 +259,7 @@ body { background: #141414; color: var(--ink); }
 .search-wrap .search-input { width: 100%; padding-left: 2.4rem; }
 .cinema-showtimes-link { display: inline-block; text-decoration: none; }
 .showtime-count { color: #aaa; }
-.cinema-showtime-grid .showtime-item em { color: #e50914; font-style: normal; font-weight: 700; margin-top: .35rem; }
+.cinema-showtime-grid .showtime-item em { color: #a3b8ff; font-style: normal; font-weight: 700; margin-top: .35rem; }
 .movie-row { scroll-snap-type: x mandatory; mask-image: linear-gradient(90deg, transparent, #000 2%, #000 96%, transparent); padding: 1.2rem 2rem 2.8rem; margin: 0 -2rem; }
 .netflix-card { position: relative; scroll-snap-align: start; overflow: hidden; border: 1px solid transparent; box-shadow: 0 10px 22px rgba(0,0,0,.22); transition: transform .2s, border-color .2s, box-shadow .2s; animation: card-rise .65s both; }
 .netflix-card:hover { border-color: rgba(229,9,20,.65); box-shadow: 0 14px 34px rgba(0,0,0,.45); transform: scale(1.04); z-index: 1; }
@@ -471,3 +471,82 @@ body { background: #141414; color: var(--ink); }
   border-color: rgba(239, 68, 68, 0.4);
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
 }
+.outline-button{
+    
+  display: inline-block;
+  padding: 8px 18px;
+  border: 2px solid #e81f6f;
+  border-radius: 8px;
+  color: #a3b9ff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+.outline-button:hover {
+  background-position: right center; /* Cuộn dải màu Gradient */
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 6px 25px rgba(41, 35, 163, 0.7),
+              0 0 40px rgba(255, 80, 0, 0.5);
+}
+.choose-seat-button{
+    
+  display: inline-block;
+  padding: 8px 18px;
+  border: 2px solid #e81f6f;
+  border-radius: 8px;
+  color: #99b1ff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+.choose-seat-button:hover {
+  background-position: right center; /* Cuộn dải màu Gradient */
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 6px 25px rgba(41, 35, 163, 0.7),
+              0 0 40px rgba(255, 80, 0, 0.5);
+}
+.logout-button{
+    
+  display: inline-block;
+  padding: 8px 18px;
+  border: 2px solid #eebfd2;
+  border-radius: 8px;
+  color: #ccd8ff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+.main-nav-link {
+    font-size: 18px;
+    color: #333333;
+    cursor: pointer;
+    display: inline-block; /* Bắt buộc có để dùng transform */
+    transition: all 0.25s ease; /* Tạo hiệu ứng mượt mà */
+  }
+
+  /* 1. Hiệu ứng khi di chuột vào (Hover) */
+  .main-nav-link:hover {
+    color: #2563eb; /* Đổi sang màu xanh khi di chuột */
+    transform: translateY(-3px); /* Đẩy chữ nổi lên trên 3px */
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Thêm bóng nhẹ bên dưới */
+  }
+
+  /* 2. Trạng thái đã được chọn (Selected) */
+  .main-nav-link.active {
+    color: #dc2626 !important; /* Giữ cố định màu đỏ sau khi click */
+    font-weight: bold;
+  }
+  .back-link {
+    font-size: 18px;
+    color: #fafafa;
+    cursor: pointer;
+    display: inline-block; /* Bắt buộc có để dùng transform */
+    transition: all 0.25s ease; /* Tạo hiệu ứng mượt mà */
+  }
+
+  /* 1. Hiệu ứng khi di chuột vào (Hover) */
+  .back-link:hover {
+    color: #2563eb; /* Đổi sang màu xanh khi di chuột */
+    transform: translateY(-3px); /* Đẩy chữ nổi lên trên 3px */
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Thêm bóng nhẹ bên dưới */
+  }

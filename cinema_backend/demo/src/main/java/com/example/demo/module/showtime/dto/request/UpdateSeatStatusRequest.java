@@ -21,6 +21,4 @@ public class UpdateSeatStatusRequest {
 
     @NotNull(message = "Status is required")
     private SeatStatus status;
-
-    private Long userId; // ID người dùng thực hiện giữ ghế (bắt buộc nếu status = RESERVED/HELD)
 }
