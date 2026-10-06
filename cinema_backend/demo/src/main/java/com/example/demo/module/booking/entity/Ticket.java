@@ -1,14 +1,21 @@
 package com.example.demo.module.booking.entity;
 
+import com.example.demo.module.cinema.entity.Seat;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
 
-import com.example.demo.module.cinema.entity.Seat;
-
 @Entity
-@Table(name = "tickets")
+@Table(
+    name = "tickets",
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_booking_seat", 
+            columnNames = {"booking_id", "seat_id"}
+        )
+    }
+)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
