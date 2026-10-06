@@ -1,6 +1,7 @@
-package com.example.demo.entity;
+package com.example.demo.module.booking.entity;
 
-import com.example.demo.entity.enums.BookingStatus;
+import com.example.demo.entity.Coupon;
+import com.example.demo.module.booking.enums.BookingStatus;
 import com.example.demo.module.showtime.entity.Showtime;
 import com.example.demo.module.user.entity.User;
 

@@ -1,7 +1,8 @@
-package com.example.demo.entity;
+package com.example.demo.module.booking.entity;
 
 import com.example.demo.entity.enums.PaymentMethod;
 import com.example.demo.entity.enums.PaymentStatus;
+
 import jakarta.persistence.*;
 import lombok.*;
 
