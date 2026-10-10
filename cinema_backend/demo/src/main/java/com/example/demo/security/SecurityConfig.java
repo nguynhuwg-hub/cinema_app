@@ -47,6 +47,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Preflight
                 .requestMatchers("/api/v1/auth/**").permitAll()        // Auth APIs
+                .requestMatchers("/api/v1/bookings/**").permitAll() // <--- THÊM DÒNG NÀY ĐỂ UNBLOCK BOOKING
                 .requestMatchers("/ws-cinema/**").permitAll()          // WebSocket STOMP Handshake
                 .requestMatchers("/api/cinemas/**").permitAll()        // Cinema module APIs
                 .requestMatchers("/api/cities/**").permitAll()
