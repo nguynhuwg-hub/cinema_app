@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -15,6 +17,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -22,16 +26,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private JwtTokenProvider tokenProvider;
 
-    @Autowired
-    private CustomUserDetailsService customUserDetailsService;
-
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        // Kiểm tra requestURI để khớp chuẩn xác 100% với đường dẫn công khai
         String path = request.getRequestURI();
-        return pathMatcher.match("/api/v1/auth/**", path);
+        return pathMatcher.match("/api/v1/auth/**", path) || pathMatcher.match("/api/auth/**", path);
     }
 
     @Override
@@ -43,16 +43,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
                 String username = tokenProvider.getUsernameFromJWT(jwt);
+                
+                // Lấy trực tiếp danh sách roles từ token claims đã được mã hóa sẵn
+                List<String> roles = tokenProvider.getRolesFromJWT(jwt);
+                
+                // Chuyển đổi List<String> roles thành GrantedAuthority để Spring Security nhận diện quyền
+                List<GrantedAuthority> authorities = roles.stream()
+                        .map(SimpleGrantedAuthority::new)
+                        .collect(Collectors.toList());
 
-                UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+                // Tạo đối tượng Authentication kèm theo quyền ADMIN
                 UsernamePasswordAuthenticationToken authentication = 
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        new UsernamePasswordAuthenticationToken(username, null, authorities);
+                
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
+                // Set vào SecurityContext
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception ex) {
-            logger.error("Could not set user authentication in security context", ex);
+            logger.error("Không thể gán Authentication cho user trong security context", ex);
         }
 
         filterChain.doFilter(request, response);

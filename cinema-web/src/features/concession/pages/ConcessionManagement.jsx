@@ -39,17 +39,20 @@ const ConcessionManagement = () => {
     };
 
     return (
-        <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1000px', margin: '0 auto' }}>
-            <h2>Quản lý Đồ ăn & Thức uống (F&B)</h2>
+        <div style={{ padding: '30px', color: '#ffffff' }}>
+            <div style={{ marginBottom: '24px' }}>
+                <p style={{ fontSize: '12px', color: '#888', textTransform: 'uppercase', marginBottom: '4px' }}>F&B MANAGEMENT</p>
+                <h2 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>Quản lý Đồ ăn & Thức uống (F&B)</h2>
+            </div>
 
-            <form onSubmit={handleSubmit} style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px', marginBottom: '25px', display: 'flex', gap: '12px', flexWrap: 'wrap', border: '1px solid #dee2e6' }}>
+            <form onSubmit={handleSubmit} style={{ background: '#161b22', padding: '24px', borderRadius: '12px', marginBottom: '30px', display: 'flex', gap: '16px', flexWrap: 'wrap', border: '1px solid #30363d' }}>
                 <input 
                     type="text" 
                     placeholder="Tên món (Ví dụ: Bắp rang bơ lớn)" 
                     value={formData.name} 
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
                     required 
-                    style={{ padding: '10px', flex: '1 1 220px', borderRadius: '4px', border: '1px solid #ccc' }}
+                    style={{ padding: '10px 12px', flex: '1 1 220px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none' }}
                 />
                 <input 
                     type="number" 
@@ -57,70 +60,72 @@ const ConcessionManagement = () => {
                     value={formData.price} 
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })} 
                     required 
-                    style={{ padding: '10px', flex: '1 1 150px', borderRadius: '4px', border: '1px solid #ccc' }}
+                    style={{ padding: '10px 12px', flex: '1 1 150px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none' }}
                 />
                 <input 
                     type="text" 
                     placeholder="Đường dẫn ảnh (URL hình ảnh)" 
                     value={formData.imageUrl} 
                     onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })} 
-                    style={{ padding: '10px', flex: '1 1 220px', borderRadius: '4px', border: '1px solid #ccc' }}
+                    style={{ padding: '10px 12px', flex: '1 1 220px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none' }}
                 />
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', cursor: 'pointer', color: '#ddd' }}>
                     <input 
                         type="checkbox" 
                         checked={formData.active} 
                         onChange={(e) => setFormData({ ...formData, active: e.target.checked })} 
-                        style={{ width: '18px', height: '18px' }}
+                        style={{ width: '18px', height: '18px', accentColor: '#ff4d4f', cursor: 'pointer' }}
                     />
                     Đang bán
                 </label>
-                <div style={{ width: '100%', display: 'flex', gap: '10px' }}>
-                    <button type="submit" style={{ background: '#007bff', color: 'white', border: 'none', padding: '10px 20px', cursor: 'pointer', borderRadius: '4px', fontWeight: 'bold' }}>
+                <div style={{ width: '100%', display: 'flex', gap: '10px', marginTop: '5px' }}>
+                    <button type="submit" style={{ background: '#ff4d4f', color: 'white', border: 'none', padding: '10px 20px', cursor: 'pointer', borderRadius: '6px', fontWeight: 'bold' }}>
                         {isEditing ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm mới'}
                     </button>
                     {isEditing && (
-                        <button type="button" onClick={() => { setIsEditing(false); setFormData({ id: '', name: '', price: '', active: true, imageUrl: '' }); }} style={{ background: '#6c757d', color: 'white', border: 'none', padding: '10px 20px', cursor: 'pointer', borderRadius: '4px' }}>
+                        <button type="button" onClick={() => { setIsEditing(false); setFormData({ id: '', name: '', price: '', active: true, imageUrl: '' }); }} style={{ background: '#30363d', color: 'white', border: 'none', padding: '10px 20px', cursor: 'pointer', borderRadius: '6px' }}>
                             Hủy bỏ
                         </button>
                     )}
                 </div>
             </form>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <thead>
-                    <tr style={{ background: '#343a40', color: 'white', textAlign: 'left' }}>
-                        <th style={{ padding: '12px' }}>ID</th>
-                        <th style={{ padding: '12px' }}>Tên món</th>
-                        <th style={{ padding: '12px' }}>Giá (VNĐ)</th>
-                        <th style={{ padding: '12px' }}>Trạng thái</th>
-                        <th style={{ padding: '12px', textAlign: 'center' }}>Hành động</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {concessions.map((item) => (
-                        <tr key={item.id} style={{ borderBottom: '1px solid #dee2e6' }}>
-                            <td style={{ padding: '12px' }}>{item.id}</td>
-                            <td style={{ padding: '12px', fontWeight: '500' }}>{item.name}</td>
-                            <td style={{ padding: '12px' }}>{Number(item.price).toLocaleString()} đ</td>
-                            <td style={{ padding: '12px' }}>
-                                {item.active ? 
-                                    <span style={{ color: 'green', fontWeight: 'bold' }}>● Đang bán</span> : 
-                                    <span style={{ color: 'red', fontWeight: 'bold' }}>● Ngừng bán</span>
-                                }
-                            </td>
-                            <td style={{ padding: '12px', textAlign: 'center' }}>
-                                <button onClick={() => handleEdit(item)} style={{ background: '#ffc107', border: 'none', padding: '6px 14px', cursor: 'pointer', borderRadius: '4px', fontWeight: 'bold' }}>Sửa</button>
-                            </td>
+            <div style={{ background: '#161b22', borderRadius: '12px', border: '1px solid #30363d', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                        <tr style={{ background: '#21262d', color: '#8b949e', borderBottom: '1px solid #30363d', fontSize: '13px' }}>
+                            <th style={{ padding: '14px 16px' }}>ID</th>
+                            <th style={{ padding: '14px 16px' }}>Tên món</th>
+                            <th style={{ padding: '14px 16px' }}>Giá (VNĐ)</th>
+                            <th style={{ padding: '14px 16px' }}>Trạng thái</th>
+                            <th style={{ padding: '14px 16px', textAlign: 'center' }}>Hành động</th>
                         </tr>
-                    ))}
-                    {concessions.length === 0 && (
-                        <tr>
-                            <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#6c757d' }}>Chưa có sản phẩm F&B nào trong hệ thống.</td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {concessions.map((item) => (
+                            <tr key={item.id} style={{ borderBottom: '1px solid #30363d', fontSize: '14px' }}>
+                                <td style={{ padding: '14px 16px', color: '#8b949e' }}>{item.id}</td>
+                                <td style={{ padding: '14px 16px', fontWeight: '500', color: '#fff' }}>{item.name}</td>
+                                <td style={{ padding: '14px 16px', color: '#ff4d4f', fontWeight: 'bold' }}>{Number(item.price).toLocaleString()} đ</td>
+                                <td style={{ padding: '14px 16px' }}>
+                                    {item.active ? 
+                                        <span style={{ color: '#2ea043', fontWeight: 'bold' }}>● Đang bán</span> : 
+                                        <span style={{ color: '#f85149', fontWeight: 'bold' }}>● Ngừng bán</span>
+                                    }
+                                </td>
+                                <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                                    <button onClick={() => handleEdit(item)} style={{ background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', padding: '6px 14px', cursor: 'pointer', borderRadius: '6px', fontWeight: '500' }}>Sửa</button>
+                                </td>
+                            </tr>
+                        ))}
+                        {concessions.length === 0 && (
+                            <tr>
+                                <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#8b949e' }}>Chưa có sản phẩm F&B nào trong hệ thống.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 };
