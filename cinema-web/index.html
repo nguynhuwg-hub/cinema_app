@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/newlogo2.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#090b10" />
+    <meta name="description" content="CineF - khám phá phim, rạp chiếu và trải nghiệm điện ảnh." />
+    <title>CineF — Trải nghiệm điện ảnh</title>
+    <style>
+      .site-intro {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        background: #090b10;
+        animation: intro-fade-out 900ms ease-in-out 1.2s forwards;
+      }
+
+      .site-intro img {
+        width: min(220px, 55vw);
+        height: auto;
+        object-fit: contain;
+      }
+
+      @keyframes intro-fade-out {
+        from {
+          opacity: 1;
+        }
+
+        to {
+          opacity: 0;
+          visibility: hidden;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="site-intro" id="site-intro" aria-hidden="true">
+      <img src="/newlogo2.png" alt="" />
+    </div>
+    <div id="root"></div>
+    <script>
+      const siteIntro = document.getElementById('site-intro');
+      siteIntro.addEventListener('animationend', () => siteIntro.remove(), { once: true });
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
