@@ -2,15 +2,11 @@ import axios from 'axios';
 
 const API_BASE_URL = "http://localhost:8080/api/concessions";
 
-// Hàm lấy và làm sạch token xác thực từ localStorage
 const getAuthHeaders = () => {
     let token = localStorage.getItem('access_token') || localStorage.getItem('accessToken');
-    
-    // Loại bỏ dấu ngoặc kép hoặc khoảng trắng thừa nếu có
     if (token) {
         token = token.replace(/^"(.*)"\$/, '\$1').trim();
     }
-
     return {
         headers: {
             Authorization: token ? `Bearer ${token}` : ''
@@ -19,11 +15,13 @@ const getAuthHeaders = () => {
 };
 
 export const concessionApi = {
+    // Khách hàng xem menu (Public API, không bắt buộc truyền token)
     getMenu: async () => {
-        const response = await axios.get(`${API_BASE_URL}/menu`, getAuthHeaders());
+        const response = await axios.get(`${API_BASE_URL}/menu`);
         return response.data;
     },
     
+    // Dành cho Admin quản lý (Yêu cầu quyền Admin/Staff)
     getManageList: async () => {
         const response = await axios.get(`${API_BASE_URL}/manage/list`, getAuthHeaders());
         return response.data;

@@ -1,12 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-const menu = [
-  { id: 'classic', name: 'Bắp rang bơ cổ điển', detail: 'Bắp rang thơm nóng · size vừa', price: 59000, icon: '🍿', tag: 'BESTSELLER' },
-  { id: 'caramel', name: 'Bắp caramel', detail: 'Caramel giòn ngọt · size lớn', price: 79000, icon: '🍿', tag: 'VỊ MỚI' },
-  { id: 'soda', name: 'Soda trái cây', detail: 'Chanh dây / dâu · 700 ml', price: 45000, icon: '🥤', tag: '' },
-  { id: 'duo', name: 'Combo xem phim đôi', detail: '2 bắp vừa + 2 nước ngọt', price: 149000, icon: '🎟️', tag: 'TIẾT KIỆM' },
-];
+import { concessionApi } from '../../concession/api/concessionApi'; // Đã sửa đúng đường dẫn tương đối
 
 const services = [
   { icon: '🎂', title: 'Tiệc phim riêng tư', detail: 'Tổ chức sinh nhật, buổi hẹn nhóm hoặc sự kiện nhỏ trong không gian phòng chiếu.' },
@@ -14,18 +8,41 @@ const services = [
   { icon: '✨', title: 'Hội viên CineF', detail: 'Theo dõi ưu đãi, nhận tin phim mới và tích lũy quyền lợi thành viên.' },
 ];
 
-const formatPrice = (price) => `${price.toLocaleString('vi-VN')}đ`;
+const formatPrice = (price) => `${Number(price || 0).toLocaleString('vi-VN')}đ`;
 
 const ServicesPage = () => {
+  const [menu, setMenu] = useState([]);
   const [cart, setCart] = useState({});
   const [checkoutMessage, setCheckoutMessage] = useState('');
 
+  // Lấy danh sách món ăn/đồ uống từ API Backend (do Admin thêm và bật Đang bán)
+  useEffect(() => {
+    const fetchMenu = async () => {
+      try {
+        const data = await concessionApi.getMenu();
+        const formattedMenu = data.map(item => ({
+          id: item.id,
+          name: item.name,
+          detail: item.description || 'Bắp rang thơm nóng · size vừa',
+          price: item.price,
+          icon: item.imageUrl ? item.imageUrl : '🍿', 
+          isImage: !!item.imageUrl,
+          tag: item.tag || ''
+        }));
+        setMenu(formattedMenu);
+      } catch (error) {
+        console.error("Lỗi khi tải menu quầy bắp nước:", error);
+      }
+    };
+    fetchMenu();
+  }, []);
+
   const cartItems = useMemo(
     () => menu.filter((item) => cart[item.id]).map((item) => ({ ...item, quantity: cart[item.id] })),
-    [cart],
+    [menu, cart],
   );
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalPrice = cartItems.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
 
   const addToCart = (id) => {
     setCart((current) => ({ ...current, [id]: (current[id] || 0) + 1 }));
@@ -65,10 +82,27 @@ const ServicesPage = () => {
           <div className="snack-grid">
             {menu.map((item) => (
               <article className="snack-card" key={item.id}>
-                <div className={`snack-illustration snack-${item.id}`}><span>{item.icon}</span>{item.tag && <small>{item.tag}</small>}</div>
-                <div className="snack-card-content"><h3>{item.name}</h3><p>{item.detail}</p><div className="snack-card-bottom"><strong>{formatPrice(item.price)}</strong><button type="button" onClick={() => addToCart(item.id)}>＋ Thêm</button></div></div>
+                <div className={`snack-illustration snack-${item.id}`}>
+                  {item.isImage ? (
+                    <img src={item.icon} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
+                  ) : (
+                    <span>{item.icon}</span>
+                  )}
+                  {item.tag && <small>{item.tag}</small>}
+                </div>
+                <div className="snack-card-content">
+                  <h3>{item.name}</h3>
+                  <p>{item.detail}</p>
+                  <div className="snack-card-bottom">
+                    <strong>{formatPrice(item.price)}</strong>
+                    <button type="button" onClick={() => addToCart(item.id)}>＋ Thêm</button>
+                  </div>
+                </div>
               </article>
             ))}
+            {menu.length === 0 && (
+              <p style={{ color: '#8b949e', gridColumn: 'span 2', padding: '20px' }}>Đang tải danh sách món ăn từ hệ thống...</p>
+            )}
           </div>
           <aside className="snack-cart">
             <div className="snack-cart-heading"><div><p className="eyebrow">GIỎ MÓN</p><h3>Cho buổi xem này</h3></div><span>{totalItems}</span></div>
@@ -76,7 +110,8 @@ const ServicesPage = () => {
               <div className="snack-cart-items">
                 {cartItems.map((item) => (
                   <div className="snack-cart-item" key={item.id}>
-                    <span className="cart-item-icon">{item.icon}</span><span className="cart-item-name"><strong>{item.name}</strong><small>{formatPrice(item.price)}</small></span>
+                    <span className="cart-item-icon">{item.isImage ? '🍿' : item.icon}</span>
+                    <span className="cart-item-name"><strong>{item.name}</strong><small>{formatPrice(item.price)}</small></span>
                     <div className="quantity-control"><button type="button" aria-label={`Bớt ${item.name}`} onClick={() => updateQuantity(item.id, -1)}>−</button><span>{item.quantity}</span><button type="button" aria-label={`Thêm ${item.name}`} onClick={() => updateQuantity(item.id, 1)}>＋</button></div>
                   </div>
                 ))}

@@ -22,7 +22,20 @@ const ConcessionManagement = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await concessionApi.saveConcession(formData);
+            // Lọc chỉ lấy các chữ số cho giá tiền
+            const cleanPrice = String(formData.price).replace(/\D/g, '');
+
+            // Đóng gói payload khớp hoàn toàn với Entity Java (price dạng số, isActive thay vì active)
+            const payload = {
+                id: formData.id || null,
+                name: formData.name,
+                description: formData.description || "",
+                price: cleanPrice === '' ? 0 : Number(cleanPrice),
+                imageUrl: formData.imageUrl || "",
+                isActive: formData.active ?? true
+            };
+
+            await concessionApi.saveConcession(payload);
             alert('Lưu sản phẩm thành công!');
             setFormData({ id: '', name: '', price: '', active: true, imageUrl: '' });
             setIsEditing(false);
@@ -34,7 +47,14 @@ const ConcessionManagement = () => {
     };
 
     const handleEdit = (item) => {
-        setFormData(item);
+        setFormData({
+            id: item.id,
+            name: item.name || '',
+            price: item.price !== undefined ? item.price : '',
+            imageUrl: item.imageUrl || '',
+            // Đồng bộ trạng thái active từ isActive của Backend
+            active: item.isActive !== undefined ? item.isActive : (item.active !== undefined ? item.active : true)
+        });
         setIsEditing(true);
     };
 
@@ -54,14 +74,17 @@ const ConcessionManagement = () => {
                     required 
                     style={{ padding: '10px 12px', flex: '1 1 220px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none' }}
                 />
+                
+                {/* Ô nhập giá tiền dạng text */}
                 <input 
-                    type="number" 
-                    placeholder="Giá tiền (VNĐ)" 
+                    type="text" 
+                    placeholder="Giá tiền (Ví dụ: 45000)" 
                     value={formData.price} 
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })} 
                     required 
                     style={{ padding: '10px 12px', flex: '1 1 150px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none' }}
                 />
+
                 <input 
                     type="text" 
                     placeholder="Đường dẫn ảnh (URL hình ảnh)" 
@@ -102,22 +125,26 @@ const ConcessionManagement = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {concessions.map((item) => (
-                            <tr key={item.id} style={{ borderBottom: '1px solid #30363d', fontSize: '14px' }}>
-                                <td style={{ padding: '14px 16px', color: '#8b949e' }}>{item.id}</td>
-                                <td style={{ padding: '14px 16px', fontWeight: '500', color: '#fff' }}>{item.name}</td>
-                                <td style={{ padding: '14px 16px', color: '#ff4d4f', fontWeight: 'bold' }}>{Number(item.price).toLocaleString()} đ</td>
-                                <td style={{ padding: '14px 16px' }}>
-                                    {item.active ? 
-                                        <span style={{ color: '#2ea043', fontWeight: 'bold' }}>● Đang bán</span> : 
-                                        <span style={{ color: '#f85149', fontWeight: 'bold' }}>● Ngừng bán</span>
-                                    }
-                                </td>
-                                <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                                    <button onClick={() => handleEdit(item)} style={{ background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', padding: '6px 14px', cursor: 'pointer', borderRadius: '6px', fontWeight: '500' }}>Sửa</button>
-                                </td>
-                            </tr>
-                        ))}
+                        {concessions.map((item) => {
+                            // Hỗ trợ hiển thị trạng thái dù backend trả về isActive hay active
+                            const statusActive = item.isActive ?? item.active ?? true;
+                            return (
+                                <tr key={item.id} style={{ borderBottom: '1px solid #30363d', fontSize: '14px' }}>
+                                    <td style={{ padding: '14px 16px', color: '#8b949e' }}>{item.id}</td>
+                                    <td style={{ padding: '14px 16px', fontWeight: '500', color: '#fff' }}>{item.name}</td>
+                                    <td style={{ padding: '14px 16px', color: '#ff4d4f', fontWeight: 'bold' }}>{isNaN(item.price) ? item.price : Number(item.price).toLocaleString()} đ</td>
+                                    <td style={{ padding: '14px 16px' }}>
+                                        {statusActive ? 
+                                            <span style={{ color: '#2ea043', fontWeight: 'bold' }}>● Đang bán</span> : 
+                                            <span style={{ color: '#f85149', fontWeight: 'bold' }}>● Ngừng bán</span>
+                                        }
+                                    </td>
+                                    <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                                        <button onClick={() => handleEdit(item)} style={{ background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', padding: '6px 14px', cursor: 'pointer', borderRadius: '6px', fontWeight: '500' }}>Sửa</button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                         {concessions.length === 0 && (
                             <tr>
                                 <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#8b949e' }}>Chưa có sản phẩm F&B nào trong hệ thống.</td>
