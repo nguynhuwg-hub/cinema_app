@@ -13,7 +13,10 @@ const ProtectedRoute = ({ allowedRoles }) => {
     return (
       <Navigate
         to="/login"
-        state={{ from: location }}
+        state={{
+          from: location,
+          message: 'Vui lòng đăng nhập để sử dụng dịch vụ này.',
+        }}
         replace
       />
     );

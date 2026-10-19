@@ -101,6 +101,10 @@ navigate(destination, { replace: true });
         <h1>Chào mừng trở lại</h1>
         <p className="muted">Đăng nhập để quản lý hồ sơ và trải nghiệm điện ảnh của bạn.</p>
 
+        {location.state?.message && (
+          <p className="form-error" role="alert">{location.state.message}</p>
+        )}
+
         {error && <p className="form-error" role="alert">{error}</p>}
 
         <form onSubmit={submit} className="stack-form">
