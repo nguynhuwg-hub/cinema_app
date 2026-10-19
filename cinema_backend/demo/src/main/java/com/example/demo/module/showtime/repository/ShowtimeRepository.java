@@ -24,7 +24,17 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, Long> {
             """)
     Optional<Showtime> findByIdForUpdate(@Param("id") Long id);
 
-    // Kiểm tra trùng lịch trong cùng phòng chiếu.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT s
+            FROM Showtime s
+            WHERE s.movie.id = :movieId
+            """)
+    List<Showtime> findByMovieIdForDurationUpdate(
+            @Param("movieId") Long movieId
+    );
+
+    // Dùng cùng khoảng thời gian nửa mở [start, end) khi kiểm tra và báo lỗi.
     @Query("""
             SELECT COUNT(s) > 0
             FROM Showtime s
@@ -33,6 +43,21 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, Long> {
               AND s.endTime > :startTime
             """)
     boolean existsOverlappingShowtime(
+            @Param("hallId") Long hallId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime
+    );
+
+    @Query("""
+            SELECT s
+            FROM Showtime s
+            JOIN FETCH s.movie
+            WHERE s.hall.id = :hallId
+              AND s.startTime < :endTime
+              AND s.endTime > :startTime
+            ORDER BY s.startTime ASC
+            """)
+    List<Showtime> findOverlappingShowtimes(
             @Param("hallId") Long hallId,
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime
@@ -54,6 +79,23 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, Long> {
             @Param("excludeShowtimeId") Long excludeShowtimeId
     );
 
+    @Query("""
+            SELECT s
+            FROM Showtime s
+            JOIN FETCH s.movie
+            WHERE s.hall.id = :hallId
+              AND s.id != :excludeShowtimeId
+              AND s.startTime < :endTime
+              AND s.endTime > :startTime
+            ORDER BY s.startTime ASC
+            """)
+    List<Showtime> findOverlappingShowtimesExcludingId(
+            @Param("hallId") Long hallId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime,
+            @Param("excludeShowtimeId") Long excludeShowtimeId
+    );
+
     // Tra cứu suất chiếu theo phim, rạp, phòng và ngày.
     @Query("""
             SELECT s
@@ -63,15 +105,31 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, Long> {
             WHERE (:movieId IS NULL OR m.id = :movieId)
               AND (:hallId IS NULL OR h.id = :hallId)
               AND (:cinemaId IS NULL OR h.cinema.id = :cinemaId)
-              AND (:startOfDay IS NULL OR s.startTime >= :startOfDay)
-              AND (:endOfDay IS NULL OR s.startTime <= :endOfDay)
+              AND s.endTime > :now
+              AND (:startOfRange IS NULL OR s.startTime >= :startOfRange)
+              AND (:endExclusive IS NULL OR s.startTime < :endExclusive)
             ORDER BY s.startTime ASC
             """)
     List<Showtime> searchShowtimes(
             @Param("movieId") Long movieId,
             @Param("cinemaId") Long cinemaId,
             @Param("hallId") Long hallId,
-            @Param("startOfDay") LocalDateTime startOfDay,
-            @Param("endOfDay") LocalDateTime endOfDay
+            @Param("startOfRange") LocalDateTime startOfRange,
+            @Param("endExclusive") LocalDateTime endExclusive,
+            @Param("now") LocalDateTime now
+    );
+
+    @Query("""
+            SELECT s
+            FROM Showtime s
+            WHERE s.endTime <= :now
+              AND NOT EXISTS (
+                  SELECT b.id
+                  FROM Booking b
+                  WHERE b.showtime = s
+              )
+            """)
+    List<Showtime> findExpiredShowtimesWithoutBookings(
+            @Param("now") LocalDateTime now
     );
 }

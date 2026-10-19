@@ -8,9 +8,25 @@ const ShowtimeManagementPage = () => {
   const [cinemas, setCinemas] = useState([]);
   const [halls, setHalls] = useState([]);
   const [showtimes, setShowtimes] = useState([]);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({ movieId: '', cinemaId: '', hallId: '', startTime: '', basePrice: '' });
-  const load = () => showtimeApi.getAll().then(setShowtimes);
-  useEffect(() => { movieApi.getAll().then(setMovies); cinemaApi.getAll().then(setCinemas); load(); }, []);
+  const load = async () => {
+    const data = await showtimeApi.getAll();
+    setShowtimes(data || []);
+  };
+  useEffect(() => {
+    movieApi.getAll().then(setMovies).catch((requestError) => {
+      setError(requestError.response?.data?.message || 'Không thể tải danh sách phim.');
+    });
+    cinemaApi.getAll().then(setCinemas).catch((requestError) => {
+      setError(requestError.response?.data?.message || 'Không thể tải danh sách cụm rạp.');
+    });
+    load().catch((requestError) => {
+      setError(requestError.response?.status === 403
+        ? 'Không có quyền xem danh sách suất chiếu (SHOWTIME_READ). Việc này khác với quyền tạo suất.'
+        : requestError.response?.data?.message || 'Không thể tải danh sách suất chiếu.');
+    });
+  }, []);
   const setField = (name, value) => setForm({ ...form, [name]: value });
   const cinemaChanged = (value) => { setForm({ ...form, cinemaId: value, hallId: '' }); hallApi.getByCinema(value).then(setHalls); };
   const selectedMovie = movies.find((movie) => String(movie.id) === form.movieId);
@@ -21,15 +37,40 @@ const ShowtimeManagementPage = () => {
     const pad = (value) => String(value).padStart(2, '0');
     return `${endTime.getFullYear()}-${pad(endTime.getMonth() + 1)}-${pad(endTime.getDate())}T${pad(endTime.getHours())}:${pad(endTime.getMinutes())}`;
   };
-  const submit = async (event) => { event.preventDefault();
-    // Bổ sung giây :00 để đúng chuẩn ISO-8601
+  const submit = async (event) => {
+    event.preventDefault();
+    setError('');
     const formatDateTime = (dt) => (dt && dt.length === 16 ? `${dt}:00` : dt);
-    await showtimeApi.create({ movieId: Number(form.movieId), hallId: Number(form.hallId), startTime: formatDateTime(form.startTime),
-      basePrice: Number(form.basePrice) }); setForm({ movieId: '', cinemaId: '', hallId: '', startTime: '', basePrice: '' }); load(); };
+    try {
+      await showtimeApi.create({
+        movieId: Number(form.movieId),
+        hallId: Number(form.hallId),
+        startTime: formatDateTime(form.startTime),
+        basePrice: Number(form.basePrice),
+      });
+    } catch (requestError) {
+      const serverMessage = requestError.response?.data?.message;
+      setError(requestError.response?.status === 403
+        ? `Máy chủ từ chối tạo suất cho phòng ID ${form.hallId} (403). Quyền được kiểm tra trước khi xử lý phòng; nếu tài khoản tạo được phòng khác, hãy đối chiếu authorities của phiên đăng nhập trong log backend.${serverMessage ? ` Chi tiết: ${serverMessage}` : ''}`
+        : requestError.response?.data?.message || 'Không thể tạo suất chiếu. Vui lòng kiểm tra thông tin và thử lại.');
+      return;
+    }
+
+    setForm({ movieId: '', cinemaId: '', hallId: '', startTime: '', basePrice: '' });
+    try {
+      await load();
+      setError('');
+    } catch (requestError) {
+      setError(requestError.response?.status === 403
+        ? 'Đã tạo suất chiếu thành công, nhưng không tải lại được danh sách (GET /api/v1/showtimes trả 403). Cần quyền xem suất chiếu SHOWTIME_READ.'
+        : requestError.response?.data?.message || 'Đã tạo suất chiếu, nhưng không tải lại được danh sách.');
+    }
+  };
   return <div className="admin-page">
     <div className="admin-page-heading">
       <p className="eyebrow">SCHEDULE CONTROL</p><h1>Quản lý suất chiếu</h1>
       </div>
+    {error && <p className="form-error" role="alert">{error}</p>}
       <div className="admin-split">
         <form className="admin-form compact" onSubmit={submit}>
           <h2>Tạo suất chiếu</h2>

@@ -1,11 +1,18 @@
 package com.example.demo.common.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -14,6 +21,9 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, Object>>
@@ -48,6 +58,29 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>>
     handleAccessDenied(AccessDeniedException ex) {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+        ServletRequestAttributes requestAttributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+
+        if (requestAttributes != null) {
+            var request = requestAttributes.getRequest();
+            String authorities = authentication == null
+                    ? "[]"
+                    : authentication.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .sorted()
+                        .toList()
+                        .toString();
+            log.warn(
+                    "Authorization denied for {} {} (authenticated={}, authorities={})",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    authentication != null && authentication.isAuthenticated(),
+                    authorities
+            );
+        }
+
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(Map.of(

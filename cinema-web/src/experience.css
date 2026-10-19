@@ -330,5 +330,5 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cine-gold); out
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *:not(#site-intro), *:not(#site-intro)::before, *:not(#site-intro)::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  *:not(#site-intro):not(.featured-3d-poster), *:not(#site-intro):not(.featured-3d-poster)::before, *:not(#site-intro):not(.featured-3d-poster)::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }

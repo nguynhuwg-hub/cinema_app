@@ -11,9 +11,13 @@ import com.example.demo.module.movie.entity.Movie;
 import com.example.demo.module.movie.repository.GenreRepository;
 import com.example.demo.module.movie.repository.MovieRepository;
 import com.example.demo.module.movie.service.MovieService;
+import com.example.demo.module.showtime.entity.Showtime;
+import com.example.demo.module.showtime.repository.ShowtimeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashSet;
 import java.util.List;
@@ -26,10 +30,12 @@ public class MovieServiceImpl implements MovieService {
 
     private final MovieRepository movieRepository;
     private final GenreRepository genreRepository;
+    private final ShowtimeRepository showtimeRepository;
 
     @Override
     @Transactional
     public MovieDetailResponse createMovie(CreateMovieRequest request) {
+        validateDuration(request.getDurationMinutes());
         Set<Genre> genres = new HashSet<>();
         if (request.getGenreIds() != null && !request.getGenreIds().isEmpty()) {
             genres = new HashSet<>(genreRepository.findAllById(request.getGenreIds()));
@@ -78,7 +84,12 @@ public class MovieServiceImpl implements MovieService {
 
         if (request.getTitle() != null) movie.setTitle(request.getTitle());
         if (request.getDescription() != null) movie.setDescription(request.getDescription());
-        if (request.getDurationMinutes() != null) movie.setDurationMinutes(request.getDurationMinutes());
+        if (request.getDurationMinutes() != null
+                && !request.getDurationMinutes().equals(movie.getDurationMinutes())) {
+            validateDuration(request.getDurationMinutes());
+            updateShowtimeEndTimes(movie, request.getDurationMinutes());
+            movie.setDurationMinutes(request.getDurationMinutes());
+        }
         if (request.getReleaseDate() != null) movie.setReleaseDate(request.getReleaseDate());
         if (request.getPosterUrl() != null) movie.setPosterUrl(request.getPosterUrl());
         if (request.getTrailerUrl() != null) movie.setTrailerUrl(request.getTrailerUrl());
@@ -112,6 +123,44 @@ public class MovieServiceImpl implements MovieService {
                 .status(movie.getStatus())
                 .avgRating(movie.getAvgRating())
                 .build();
+    }
+
+    private void updateShowtimeEndTimes(Movie movie, int durationMinutes) {
+        List<Showtime> movieShowtimes =
+                showtimeRepository.findByMovieIdForDurationUpdate(movie.getId());
+
+        for (Showtime showtime : movieShowtimes) {
+            var correctedEndTime =
+                    showtime.getStartTime().plusMinutes(durationMinutes);
+            List<Showtime> overlapping = showtimeRepository
+                    .findOverlappingShowtimesExcludingId(
+                            showtime.getHall().getId(),
+                            showtime.getStartTime(),
+                            correctedEndTime,
+                            showtime.getId()
+                    );
+            if (!overlapping.isEmpty()) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        String.format(
+                                "Không thể đổi thời lượng phim vì suất #%d trong phòng %s sẽ trùng với suất #%d.",
+                                showtime.getId(),
+                                showtime.getHall().getName(),
+                                overlapping.get(0).getId()
+                        )
+                );
+            }
+            showtime.setEndTime(correctedEndTime);
+        }
+    }
+
+    private void validateDuration(Integer durationMinutes) {
+        if (durationMinutes == null || durationMinutes < 1 || durationMinutes > 600) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Thời lượng phim phải từ 1 đến 600 phút."
+            );
+        }
     }
 
     private MovieDetailResponse mapToDetailResponse(Movie movie) {

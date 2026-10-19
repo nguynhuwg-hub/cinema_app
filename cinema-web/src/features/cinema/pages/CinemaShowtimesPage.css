@@ -1,0 +1,93 @@
+.cinema-showtimes-page { padding-bottom: 5rem; color: #f5f2ed; }
+.cinema-showtimes-page .back-link { color: #e7b878; }
+.cinema-week-heading { position: relative; display: flex; min-height: 250px; align-items: end; justify-content: space-between; gap: 1.5rem; margin-top: 1.25rem; padding: clamp(1.5rem,5vw,3.5rem); overflow: hidden; border: 1px solid rgba(255,255,255,.09); border-radius: 20px; background: radial-gradient(ellipse at 82% 20%,rgba(214,151,89,.2),transparent 35%),linear-gradient(125deg,#222027,#17171c 60%,#29211d); }
+.cinema-week-heading::after { position: absolute; right: 8%; bottom: -185px; width: 350px; height: 350px; border: 1px solid rgba(231,184,120,.16); border-radius: 50%; box-shadow: 0 0 0 30px rgba(231,184,120,.035),0 0 0 65px rgba(231,184,120,.025); content: ''; pointer-events: none; }
+.cinema-week-copy,.week-total { position: relative; z-index: 1; }
+.cinema-week-copy .eyebrow,.weekly-schedule-toolbar .eyebrow,.selected-day-heading .eyebrow { color: #e7b878; }
+.cinema-week-copy h1 { margin: 0 0 .65rem; color: #f7f3ed; font-size: clamp(2.3rem,6vw,4.5rem); letter-spacing: -.06em; line-height: .98; }
+.cinema-week-copy .muted { color: #b1adb0; font-size: .9rem; }
+.week-total { display: grid; min-width: 128px; justify-items: center; gap: .1rem; padding: .9rem 1.15rem; border: 1px solid rgba(231,184,120,.25); border-radius: 12px; background: rgba(8,8,10,.32); backdrop-filter: blur(8px); }
+.week-total strong { color: #f1c587; font-size: 1.8rem; line-height: 1.1; }
+.week-total span { color: #c4bcb4; font-size: .68rem; }
+.weekly-schedule { margin-top: 2rem; padding: clamp(1rem,3vw,1.8rem); border: 1px solid rgba(255,255,255,.08); border-radius: 18px; background: linear-gradient(150deg,#1d1d22,#161619 70%); box-shadow: 0 20px 55px rgba(0,0,0,.2); }
+.weekly-schedule-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1.35rem; }
+.weekly-schedule-toolbar .eyebrow,.selected-day-heading .eyebrow { margin-bottom: .35rem; }
+.weekly-schedule-toolbar h2 { margin: 0; color: #f5f0e9; font-size: clamp(1.1rem,3vw,1.5rem); letter-spacing: -.025em; }
+.week-navigation { display: flex; align-items: center; gap: .45rem; }
+.week-navigation button { min-height: 38px; padding: .4rem .75rem; border: 1px solid #39373a; border-radius: 8px; background: #242327; color: #e9e4dc; font: inherit; font-size: .75rem; cursor: pointer; transition: border-color .18s ease,background .18s ease,color .18s ease; }
+.week-navigation button:hover { border-color: #c6955b; background: #302a24; color: #f1c587; }
+.week-navigation button:focus-visible,.week-day-button:focus-visible,.daily-screening-option:focus-visible { outline: 2px solid #f1c587; outline-offset: 3px; }
+.week-day-picker { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: .65rem; padding: .9rem; border: 1px solid #302f33; border-radius: 14px; background: #141417; }
+.week-day-button { position: relative; display: flex; min-width: 0; min-height: 112px; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; padding: .65rem .25rem; border: 1px solid #343338; border-radius: 11px; background: linear-gradient(160deg,#242328,#1c1b20); color: #cfccd0; font: inherit; cursor: pointer; transition: transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease; }
+.week-day-button:hover { transform: translateY(-2px); border-color: #9c744d; background: #29252a; }
+.week-day-button.is-selected { transform: translateY(-2px); border-color: #e3ae70; background: linear-gradient(155deg,#8c4a32,#582e2c 68%,#382427); color: #fff7ed; box-shadow: 0 8px 24px rgba(153,75,47,.24),inset 0 1px rgba(255,255,255,.15); }
+.week-day-name { color: #a9a5ab; font-size: .7rem; font-weight: 700; text-transform: capitalize; }
+.is-selected .week-day-name { color: #f4c99b; }
+.week-day-number { color: #f2eee8; font-size: 1.7rem; line-height: 1.1; }
+.week-day-count { color: #aaa5a7; font-size: .65rem; }
+.is-selected .week-day-count { color: #f4d8bc; }
+.week-day-today { position: absolute; top: .35rem; right: .35rem; padding: .13rem .28rem; border-radius: 999px; background: rgba(239,199,149,.15); color: #f2c68d; font-size: .5rem; font-weight: 800; }
+.week-day-button.is-selected .week-day-today { background: rgba(255,244,230,.18); color: #fff0d9; }
+.selected-day-schedule { margin-top: 1.45rem; }
+.selected-day-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: .85rem; padding: 0 .15rem .9rem; border-bottom: 1px solid #343237; }
+.selected-day-heading h3 { margin: 0; color: #f3eee7; font-size: clamp(1.05rem,2.5vw,1.35rem); text-transform: capitalize; }
+.selected-day-heading > span { flex: none; color: #bcb5ad; font-size: .72rem; }
+.daily-movie-list { display: grid; gap: .9rem; }
+.daily-movie-card { display: grid; grid-template-columns: 155px minmax(0,1fr); gap: 1.1rem; padding: .8rem; overflow: hidden; border: 1px solid #343237; border-radius: 13px; background: linear-gradient(115deg,#242328,#1e1e22 58%,#211f20); transition: border-color .18s ease,transform .18s ease; }
+.daily-movie-card:hover { transform: translateY(-2px); border-color: rgba(224,170,112,.48); }
+.daily-movie-poster { display: grid; min-height: 210px; place-items: center; overflow: hidden; border-radius: 8px; background: radial-gradient(ellipse at 50% 20%,#51443c,#29272a 75%); color: #aaa09a; font-size: .65rem; font-weight: 800; letter-spacing: .14em; }
+.daily-movie-poster img { width: 100%; height: 100%; min-height: 210px; object-fit: cover; }
+.daily-movie-content { min-width: 0; padding: .25rem .25rem .2rem 0; }
+.daily-movie-topline { display: flex; align-items: flex-start; justify-content: space-between; gap: .8rem; }
+.daily-movie-title { color: #f7f2eb; font-size: 1.15rem; font-weight: 800; line-height: 1.3; text-decoration: none; }
+.daily-movie-title:hover { color: #f0bd81; }
+.daily-movie-genres,.daily-movie-meta { margin-top: .34rem; color: #b7adb0; font-size: .7rem; line-height: 1.5; }
+.daily-movie-rating { flex: none; padding: .28rem .45rem; border: 1px solid rgba(232,185,122,.22); border-radius: 6px; background: rgba(205,144,76,.09); color: #f0c07e; font-size: .75rem; font-weight: 800; }
+.daily-movie-description { max-width: 800px; margin-top: .65rem; color: #d0cbd0; font-size: .76rem; line-height: 1.6; }
+.daily-movie-trailer { display: inline-block; margin-top: .55rem; color: #e7b878; font-size: .7rem; font-weight: 700; text-decoration: none; }
+.daily-movie-trailer:hover { color: #ffdaa6; }
+.daily-screenings { margin-top: .9rem; padding-top: .75rem; border-top: 1px solid #39363a; }
+.daily-screenings-label { display: block; margin-bottom: .5rem; color: #9c969c; font-size: .58rem; font-weight: 800; letter-spacing: .13em; }
+.daily-screening-options { display: flex; flex-wrap: wrap; gap: .5rem; }
+.daily-screening-option { display: grid; min-width: 116px; gap: .12rem; padding: .5rem .65rem; border: 1px solid #49413c; border-radius: 8px; background: #19191c; color: inherit; text-decoration: none; transition: border-color .18s ease,background .18s ease,transform .18s ease; }
+.daily-screening-option:hover { transform: translateY(-2px); border-color: #d7a267; background: #29231f; }
+.daily-screening-option strong { color: #f3c283; font-size: .95rem; }
+.daily-screening-option span { overflow: hidden; color: #c6c0c0; font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
+.daily-screening-option small { color: #969196; font-size: .6rem; }
+.schedule-empty { display: grid; min-height: 190px; justify-items: center; align-content: center; gap: .4rem; padding: 1.5rem; border: 1px dashed #3a373a; border-radius: 12px; background: rgba(255,255,255,.015); color: #aaa4aa; text-align: center; }
+.schedule-empty h4 { margin: .15rem 0 0; color: #e5ded5; font-size: .95rem; }
+.schedule-empty p { color: #a19ba1; font-size: .75rem; }
+.schedule-empty-icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 50%; background: rgba(214,151,89,.12); color: #e7b878; font-size: 1.1rem; }
+@media (max-width: 760px) {
+  .cinema-week-heading { min-height: 210px; }
+  .week-day-picker { gap: .4rem; padding: .55rem; }
+  .week-day-button { min-height: 96px; }
+  .week-day-today { position: static; margin-top: .1rem; }
+}
+@media (max-width: 560px) {
+  .cinema-week-heading { min-height: 0; align-items: flex-start; flex-direction: column; }
+  .week-total { grid-template-columns: auto auto; min-width: 0; align-items: baseline; justify-items: start; gap: .4rem; padding: .55rem .75rem; }
+  .week-total strong { font-size: 1.15rem; }
+  .weekly-schedule-toolbar { align-items: flex-start; flex-direction: column; }
+  .week-navigation { align-self: stretch; }
+  .week-navigation button:nth-child(2) { flex: 1; }
+  .week-day-picker { gap: .28rem; padding: .42rem; }
+  .week-day-button { min-height: 82px; gap: .2rem; padding: .45rem .05rem; border-radius: 8px; }
+  .week-day-name { font-size: .58rem; }
+  .week-day-number { font-size: 1.25rem; }
+  .week-day-count { font-size: .52rem; }
+  .week-day-today { padding: .1rem .2rem; font-size: .42rem; }
+  .selected-day-heading { align-items: flex-start; flex-direction: column; gap: .4rem; }
+  .daily-movie-card { grid-template-columns: 92px minmax(0,1fr); gap: .7rem; padding: .55rem; }
+  .daily-movie-poster,.daily-movie-poster img { min-height: 140px; }
+  .daily-movie-topline { gap: .4rem; }
+  .daily-movie-title { font-size: .92rem; }
+  .daily-movie-genres,.daily-movie-meta { font-size: .62rem; }
+  .daily-movie-description { font-size: .68rem; }
+  .daily-movie-rating { padding: .22rem .32rem; font-size: .65rem; }
+  .daily-screening-options { gap: .35rem; }
+  .daily-screening-option { min-width: 100px; padding: .42rem .5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .week-day-button,.week-navigation button,.daily-movie-card,.daily-screening-option { transition: none; }
+}

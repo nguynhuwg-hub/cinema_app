@@ -18,11 +18,13 @@ import com.example.demo.module.showtime.service.ShowtimeService;
 import com.example.demo.module.movie.entity.Movie;
 import com.example.demo.module.movie.repository.MovieRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -38,22 +40,40 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Override
     @Transactional
     public ShowtimeResponse createShowtime(CreateShowtimeRequest request) {
+        Hall hall = hallRepository.findByIdForShowtimeCreation(request.getHallId())
+                .orElseThrow(() -> new RuntimeException(
+                        "Hall not found with id: " + request.getHallId()
+                ));
         Movie movie = movieRepository.findById(request.getMovieId())
                 .orElseThrow(() -> new RuntimeException("Movie not found with id: " + request.getMovieId()));
 
         LocalDateTime endTime = calculateEndTime(request.getStartTime(), movie);
-        boolean isOverlapped = showtimeRepository.existsOverlappingShowtime(
-                request.getHallId(), request.getStartTime(), endTime);
-        if (isOverlapped) {
-            throw new IllegalStateException(
-                    "Showtime overlaps with an existing showtime in this hall"
+        List<Showtime> overlappingShowtimes =
+                showtimeRepository.findOverlappingShowtimes(
+                        hall.getId(), request.getStartTime(), endTime
+                );
+        if (!overlappingShowtimes.isEmpty()) {
+            String conflictingShowtimes = overlappingShowtimes.stream()
+                    .map(existing -> String.format(
+                            "#%d %s (%d phút, %s – %s)",
+                            existing.getId(),
+                            existing.getMovie().getTitle(),
+                            existing.getMovie().getDurationMinutes(),
+                            existing.getStartTime(),
+                            existing.getEndTime()
+                    ))
+                    .collect(java.util.stream.Collectors.joining(", "));
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    String.format(
+                            "Phòng %s bị trùng lịch. Suất yêu cầu: %s – %s. Suất đang xung đột: %s",
+                            hall.getName(),
+                            request.getStartTime(),
+                            endTime,
+                            conflictingShowtimes
+                    )
             );
         }
-
-        Hall hall = hallRepository.findById(request.getHallId())
-                .orElseThrow(() -> new RuntimeException(
-                        "Hall not found with id: " + request.getHallId()
-                ));
 
         Showtime showtime = Showtime.builder()
                 .movie(movie)
@@ -119,21 +139,35 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     public List<ShowtimeResponse> searchShowtimes(
             ShowtimeSearchFilter filter
     ) {
-        LocalDateTime startOfDay = filter.getDate() != null
-                ? filter.getDate().atStartOfDay()
-                : null;
+        LocalDate startDate = filter.getStartDate() != null
+                ? filter.getStartDate()
+                : filter.getDate();
+        LocalDate endDate = filter.getEndDate() != null
+                ? filter.getEndDate()
+                : filter.getDate();
+        if (startDate != null
+                && endDate != null
+                && startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException(
+                    "Showtime start date must not be after end date"
+            );
+        }
 
-        LocalDateTime endOfDay = filter.getDate() != null
-                ? filter.getDate().atTime(LocalTime.MAX)
-                : null;
+        LocalDateTime startOfRange = startDate == null
+                ? null
+                : startDate.atStartOfDay();
+        LocalDateTime endExclusive = endDate == null
+                ? null
+                : endDate.plusDays(1).atStartOfDay();
 
         List<Showtime> showtimes =
                 showtimeRepository.searchShowtimes(
                         filter.getMovieId(),
                         filter.getCinemaId(),
                         filter.getHallId(),
-                        startOfDay,
-                        endOfDay
+                        startOfRange,
+                        endExclusive,
+                        LocalDateTime.now()
                 );
 
         return showtimes.stream()
@@ -153,11 +187,30 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                 ));
 
         LocalDateTime endTime = calculateEndTime(request.getStartTime(), showtime.getMovie());
-        boolean isOverlapped = showtimeRepository.existsOverlappingShowtimeExcludingId(
-                showtime.getHall().getId(), request.getStartTime(), endTime, id);
-        if (isOverlapped) {
-            throw new IllegalStateException(
-                    "Updated showtime overlaps with an existing showtime"
+        List<Showtime> overlappingShowtimes =
+                showtimeRepository.findOverlappingShowtimesExcludingId(
+                        showtime.getHall().getId(),
+                        request.getStartTime(),
+                        endTime,
+                        id
+                );
+        if (!overlappingShowtimes.isEmpty()) {
+            String conflictingShowtimes = overlappingShowtimes.stream()
+                    .map(existing -> String.format(
+                            "#%d %s (%d phút, %s – %s)",
+                            existing.getId(),
+                            existing.getMovie().getTitle(),
+                            existing.getMovie().getDurationMinutes(),
+                            existing.getStartTime(),
+                            existing.getEndTime()
+                    ))
+                    .collect(java.util.stream.Collectors.joining(", "));
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    String.format(
+                            "Giờ cập nhật bị trùng với suất chiếu: %s",
+                            conflictingShowtimes
+                    )
             );
         }
 
@@ -173,8 +226,11 @@ public class ShowtimeServiceImpl implements ShowtimeService {
 
     private LocalDateTime calculateEndTime(LocalDateTime startTime, Movie movie) {
         Integer durationMinutes = movie.getDurationMinutes();
-        if (durationMinutes == null || durationMinutes <= 0) {
-            throw new IllegalStateException("Movie duration must be greater than zero");
+        if (durationMinutes == null || durationMinutes <= 0 || durationMinutes > 600) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Thời lượng phim không hợp lệ (phải từ 1 đến 600 phút). Hãy sửa thời lượng phim trước khi tạo suất."
+            );
         }
         return startTime.plusMinutes(durationMinutes);
     }
@@ -196,6 +252,22 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                 .id(showtime.getId())
                 .movieId(showtime.getMovie().getId())
                 .movieTitle(showtime.getMovie().getTitle())
+                .movieDescription(showtime.getMovie().getDescription())
+                .movieDurationMinutes(showtime.getMovie().getDurationMinutes())
+                .movieReleaseDate(showtime.getMovie().getReleaseDate())
+                .moviePosterUrl(showtime.getMovie().getPosterUrl())
+                .movieTrailerUrl(showtime.getMovie().getTrailerUrl())
+                .movieLanguage(showtime.getMovie().getLanguage())
+                .movieStatus(showtime.getMovie().getStatus() == null
+                        ? null
+                        : showtime.getMovie().getStatus().name())
+                .movieAvgRating(showtime.getMovie().getAvgRating())
+                .movieGenres(showtime.getMovie().getGenres() == null
+                        ? List.of()
+                        : showtime.getMovie().getGenres().stream()
+                            .map(genre -> genre.getName())
+                            .sorted()
+                            .toList())
                 .hallId(showtime.getHall().getId())
                 .hallName(showtime.getHall().getName())
                 .startTime(showtime.getStartTime())
