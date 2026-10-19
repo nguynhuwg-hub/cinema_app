@@ -80,6 +80,10 @@ const [savingUser, setSavingUser] = useState(false);
     }
   };
 
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   // Mở Drawer/Modal chỉnh sửa
   
 const handleEditClick = (user) => {
