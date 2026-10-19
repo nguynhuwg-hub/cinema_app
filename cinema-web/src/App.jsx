@@ -76,20 +76,22 @@ function App() {
               element={<MovieDetailPage />}
             />
 
-            <Route
-              path="/showtimes/:id"
-              element={<ShowtimeDetailPage />}
-            />
+            <Route element={<ProtectedRoute />}>
+              <Route
+                path="/showtimes/:id"
+                element={<ShowtimeDetailPage />}
+              />
 
-            <Route
-              path="/cinemas"
-              element={<CinemaListPage />}
-            />
+              <Route
+                path="/cinemas"
+                element={<CinemaListPage />}
+              />
 
-            <Route
-              path="/cinemas/:id/showtimes"
-              element={<CinemaShowtimesPage />}
-            />
+              <Route
+                path="/cinemas/:id/showtimes"
+                element={<CinemaShowtimesPage />}
+              />
+            </Route>
 
             {/* Reviews */}
             <Route
