@@ -1,3 +1,4 @@
+
 package com.example.demo.module.movie.service.impl;
 
 import com.example.demo.module.movie.dto.request.CreateMovieRequest;
@@ -13,7 +14,9 @@ import com.example.demo.module.movie.repository.MovieRepository;
 import com.example.demo.module.movie.service.MovieService;
 import com.example.demo.module.showtime.entity.Showtime;
 import com.example.demo.module.showtime.repository.ShowtimeRepository;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,9 +39,14 @@ public class MovieServiceImpl implements MovieService {
     @Transactional
     public MovieDetailResponse createMovie(CreateMovieRequest request) {
         validateDuration(request.getDurationMinutes());
+
         Set<Genre> genres = new HashSet<>();
-        if (request.getGenreIds() != null && !request.getGenreIds().isEmpty()) {
-            genres = new HashSet<>(genreRepository.findAllById(request.getGenreIds()));
+
+        if (request.getGenreIds() != null
+                && !request.getGenreIds().isEmpty()) {
+            genres = new HashSet<>(
+                    genreRepository.findAllById(request.getGenreIds())
+            );
         }
 
         Movie movie = Movie.builder()
@@ -61,7 +69,12 @@ public class MovieServiceImpl implements MovieService {
     @Transactional(readOnly = true)
     public MovieDetailResponse getMovieById(Long id) {
         Movie movie = movieRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Movie not found with id: " + id));
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Movie not found with id: " + id
+                        )
+                );
+
         return mapToDetailResponse(movie);
     }
 
@@ -73,44 +86,112 @@ public class MovieServiceImpl implements MovieService {
                 filter.getGenreId(),
                 filter.getStatus()
         );
-        return movies.stream().map(this::mapToResponse).collect(Collectors.toList());
+
+        return movies.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
-    public MovieDetailResponse updateMovie(Long id, UpdateMovieRequest request) {
+    public MovieDetailResponse updateMovie(
+            Long id,
+            UpdateMovieRequest request
+    ) {
         Movie movie = movieRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Movie not found with id: " + id));
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Movie not found with id: " + id
+                        )
+                );
 
-        if (request.getTitle() != null) movie.setTitle(request.getTitle());
-        if (request.getDescription() != null) movie.setDescription(request.getDescription());
+        if (request.getTitle() != null) {
+            movie.setTitle(request.getTitle());
+        }
+
+        if (request.getDescription() != null) {
+            movie.setDescription(request.getDescription());
+        }
+
         if (request.getDurationMinutes() != null
-                && !request.getDurationMinutes().equals(movie.getDurationMinutes())) {
+                && !request.getDurationMinutes()
+                        .equals(movie.getDurationMinutes())) {
+
             validateDuration(request.getDurationMinutes());
-            updateShowtimeEndTimes(movie, request.getDurationMinutes());
+            updateShowtimeEndTimes(
+                    movie,
+                    request.getDurationMinutes()
+            );
             movie.setDurationMinutes(request.getDurationMinutes());
         }
-        if (request.getReleaseDate() != null) movie.setReleaseDate(request.getReleaseDate());
-        if (request.getPosterUrl() != null) movie.setPosterUrl(request.getPosterUrl());
-        if (request.getTrailerUrl() != null) movie.setTrailerUrl(request.getTrailerUrl());
-        if (request.getLanguage() != null) movie.setLanguage(request.getLanguage());
-        if (request.getStatus() != null) movie.setStatus(request.getStatus());
+
+        if (request.getReleaseDate() != null) {
+            movie.setReleaseDate(request.getReleaseDate());
+        }
+
+        if (request.getPosterUrl() != null) {
+            movie.setPosterUrl(request.getPosterUrl());
+        }
+
+        if (request.getTrailerUrl() != null) {
+            movie.setTrailerUrl(request.getTrailerUrl());
+        }
+
+        if (request.getLanguage() != null) {
+            movie.setLanguage(request.getLanguage());
+        }
+
+        if (request.getStatus() != null) {
+            movie.setStatus(request.getStatus());
+        }
 
         if (request.getGenreIds() != null) {
-            Set<Genre> genres = new HashSet<>(genreRepository.findAllById(request.getGenreIds()));
+            Set<Genre> genres = new HashSet<>(
+                    genreRepository.findAllById(
+                            request.getGenreIds()
+                    )
+            );
             movie.setGenres(genres);
         }
 
         return mapToDetailResponse(movieRepository.save(movie));
     }
 
+    /**
+     * Xóa phim an toàn:
+     * - 404 nếu phim không tồn tại.
+     * - 409 nếu phim còn suất chiếu.
+     * - Xóa phim nếu không có suất chiếu và
+     *   không vi phạm ràng buộc dữ liệu khác.
+     */
     @Override
     @Transactional
     public void deleteMovie(Long id) {
+
         if (!movieRepository.existsById(id)) {
-            throw new RuntimeException("Movie not found with id: " + id);
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Không tìm thấy phim có ID: " + id
+            );
         }
+
+        boolean hasShowtimes =
+                showtimeRepository.existsByMovieId(id);
+
+        if (hasShowtimes) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Không thể xóa phim vì phim này vẫn còn "
+                    + "suất chiếu. Vui lòng kiểm tra các "
+                    + "suất chiếu liên quan."
+            );
+        }
+
         movieRepository.deleteById(id);
+
+        // Thực hiện SQL sớm để phát hiện lỗi
+        // ràng buộc dữ liệu trước khi kết thúc method.
+        movieRepository.flush();
     }
 
     private MovieResponse mapToResponse(Movie movie) {
@@ -125,37 +206,52 @@ public class MovieServiceImpl implements MovieService {
                 .build();
     }
 
-    private void updateShowtimeEndTimes(Movie movie, int durationMinutes) {
+    private void updateShowtimeEndTimes(
+            Movie movie,
+            int durationMinutes
+    ) {
         List<Showtime> movieShowtimes =
-                showtimeRepository.findByMovieIdForDurationUpdate(movie.getId());
+                showtimeRepository.findByMovieIdForDurationUpdate(
+                        movie.getId()
+                );
 
         for (Showtime showtime : movieShowtimes) {
             var correctedEndTime =
-                    showtime.getStartTime().plusMinutes(durationMinutes);
-            List<Showtime> overlapping = showtimeRepository
-                    .findOverlappingShowtimesExcludingId(
-                            showtime.getHall().getId(),
-                            showtime.getStartTime(),
-                            correctedEndTime,
-                            showtime.getId()
-                    );
+                    showtime.getStartTime()
+                            .plusMinutes(durationMinutes);
+
+            List<Showtime> overlapping =
+                    showtimeRepository
+                            .findOverlappingShowtimesExcludingId(
+                                    showtime.getHall().getId(),
+                                    showtime.getStartTime(),
+                                    correctedEndTime,
+                                    showtime.getId()
+                            );
+
             if (!overlapping.isEmpty()) {
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
                         String.format(
-                                "Không thể đổi thời lượng phim vì suất #%d trong phòng %s sẽ trùng với suất #%d.",
+                                "Không thể đổi thời lượng phim "
+                                + "vì suất #%d trong phòng %s "
+                                + "sẽ trùng với suất #%d.",
                                 showtime.getId(),
                                 showtime.getHall().getName(),
                                 overlapping.get(0).getId()
                         )
                 );
             }
+
             showtime.setEndTime(correctedEndTime);
         }
     }
 
     private void validateDuration(Integer durationMinutes) {
-        if (durationMinutes == null || durationMinutes < 1 || durationMinutes > 600) {
+        if (durationMinutes == null
+                || durationMinutes < 1
+                || durationMinutes > 600) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Thời lượng phim phải từ 1 đến 600 phút."
@@ -164,10 +260,17 @@ public class MovieServiceImpl implements MovieService {
     }
 
     private MovieDetailResponse mapToDetailResponse(Movie movie) {
-        Set<GenreResponse> genreResponses = movie.getGenres() != null ?
-                movie.getGenres().stream()
-                        .map(g -> GenreResponse.builder().id(g.getId()).name(g.getName()).build())
-                        .collect(Collectors.toSet()) : new HashSet<>();
+        Set<GenreResponse> genreResponses =
+                movie.getGenres() != null
+                        ? movie.getGenres().stream()
+                                .map(g ->
+                                        GenreResponse.builder()
+                                                .id(g.getId())
+                                                .name(g.getName())
+                                                .build()
+                                )
+                                .collect(Collectors.toSet())
+                        : new HashSet<>();
 
         return MovieDetailResponse.builder()
                 .id(movie.getId())

@@ -1,3 +1,4 @@
+
 package com.example.demo.module.booking.repository;
 
 import com.example.demo.module.booking.entity.Booking;
@@ -22,6 +23,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             Long showtimeId,
             BookingStatus status
     );
+
+    // Kiểm tra suất chiếu đã phát sinh Booking hay chưa.
+    // Bao gồm cả PENDING, PAID, CANCELLED và EXPIRED.
+    boolean existsByShowtimeId(Long showtimeId);
 
     List<Booking> findByUserEmailOrderByCreatedAtDesc(String email);
 

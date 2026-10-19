@@ -17,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import jakarta.servlet.DispatcherType;
 
 @Configuration
 @EnableWebSecurity
@@ -55,11 +56,19 @@ public class SecurityConfig {
 
             .authorizeHttpRequests(auth -> auth
 
+                // Cho phép Spring Boot xử lý lỗi nội bộ
+                .dispatcherTypeMatchers(
+                    DispatcherType.ERROR
+                ).permitAll()
+
                 // CORS preflight
                 .requestMatchers(
                     HttpMethod.OPTIONS,
                     "/**"
                 ).permitAll()
+
+                // Error endpoint
+                .requestMatchers("/error").permitAll()
 
                 // Authentication APIs
                 .requestMatchers(
@@ -68,7 +77,8 @@ public class SecurityConfig {
                 ).permitAll()
 
                 // VNPay callbacks
-                // Không yêu cầu JWT nhưng phải xác thực chữ ký
+                // Chữ ký VNPay vẫn phải được xác thực
+                // tại tầng xử lý callback
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/v1/payments/vnpay/ipn",
@@ -81,7 +91,6 @@ public class SecurityConfig {
                 ).authenticated()
 
                 // Ticket check-in
-                // Chỉ nhân viên, quản lý và admin
                 .requestMatchers(
                     HttpMethod.POST,
                     "/api/v1/tickets/check-in"
@@ -120,15 +129,42 @@ public class SecurityConfig {
                     "/api/seats/**"
                 ).permitAll()
 
-                // Movies, genres, showtimes
+                // Public movie APIs: chỉ đọc
                 .requestMatchers(
-                    "/api/v1/movies/**",
-                    "/api/v1/genres/**",
+                    HttpMethod.GET,
+                    "/api/v1/movies/**"
+                ).permitAll()
+
+                // Public genre APIs: chỉ đọc
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/v1/genres/**"
+                ).permitAll()
+
+                // Public showtime APIs: chỉ đọc
+                .requestMatchers(
+                    HttpMethod.GET,
                     "/api/v1/showtimes/**"
                 ).permitAll()
 
+                // Movie management:
+                // Yêu cầu đăng nhập, quyền chi tiết
+                // được kiểm tra tại Controller/Service
+                .requestMatchers(
+                    "/api/v1/movies/**"
+                ).authenticated()
+
+                // Genre management
+                .requestMatchers(
+                    "/api/v1/genres/**"
+                ).authenticated()
+
+                // Showtime management
+                .requestMatchers(
+                    "/api/v1/showtimes/**"
+                ).authenticated()
+
                 // Review management
-                // Manager và Admin được quản lý review
                 .requestMatchers(
                     "/api/v1/reviews/admin/**"
                 ).hasAnyRole(
