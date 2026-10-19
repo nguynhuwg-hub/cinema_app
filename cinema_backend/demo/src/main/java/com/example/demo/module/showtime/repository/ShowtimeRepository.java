@@ -1,3 +1,4 @@
+
 package com.example.demo.module.showtime.repository;
 
 import com.example.demo.module.showtime.entity.Showtime;
@@ -14,6 +15,9 @@ import java.util.Optional;
 
 @Repository
 public interface ShowtimeRepository extends JpaRepository<Showtime, Long> {
+
+    // Kiểm tra phim có suất chiếu hay không trước khi xóa phim.
+    boolean existsByMovieId(Long movieId);
 
     // Khóa suất chiếu trong transaction để tránh giữ/bán trùng ghế.
     @Lock(LockModeType.PESSIMISTIC_WRITE)

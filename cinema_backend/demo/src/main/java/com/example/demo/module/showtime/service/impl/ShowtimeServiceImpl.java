@@ -1,6 +1,8 @@
+
 package com.example.demo.module.showtime.service.impl;
 
 import com.example.demo.entity.enums.SeatStatus;
+import com.example.demo.module.booking.repository.BookingRepository;
 import com.example.demo.module.cinema.entity.Hall;
 import com.example.demo.module.cinema.entity.Seat;
 import com.example.demo.module.cinema.repository.HallRepository;
@@ -17,6 +19,7 @@ import com.example.demo.module.showtime.repository.ShowtimeSeatRepository;
 import com.example.demo.module.showtime.service.ShowtimeService;
 import com.example.demo.module.movie.entity.Movie;
 import com.example.demo.module.movie.repository.MovieRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -36,6 +39,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     private final MovieRepository movieRepository;
     private final HallRepository hallRepository;
     private final SeatRepository seatRepository;
+    private final BookingRepository bookingRepository;
 
     @Override
     @Transactional
@@ -44,14 +48,19 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                 .orElseThrow(() -> new RuntimeException(
                         "Hall not found with id: " + request.getHallId()
                 ));
+
         Movie movie = movieRepository.findById(request.getMovieId())
-                .orElseThrow(() -> new RuntimeException("Movie not found with id: " + request.getMovieId()));
+                .orElseThrow(() -> new RuntimeException(
+                        "Movie not found with id: " + request.getMovieId()
+                ));
 
         LocalDateTime endTime = calculateEndTime(request.getStartTime(), movie);
+
         List<Showtime> overlappingShowtimes =
                 showtimeRepository.findOverlappingShowtimes(
                         hall.getId(), request.getStartTime(), endTime
                 );
+
         if (!overlappingShowtimes.isEmpty()) {
             String conflictingShowtimes = overlappingShowtimes.stream()
                     .map(existing -> String.format(
@@ -63,6 +72,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                             existing.getEndTime()
                     ))
                     .collect(java.util.stream.Collectors.joining(", "));
+
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     String.format(
@@ -142,9 +152,11 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         LocalDate startDate = filter.getStartDate() != null
                 ? filter.getStartDate()
                 : filter.getDate();
+
         LocalDate endDate = filter.getEndDate() != null
                 ? filter.getEndDate()
                 : filter.getDate();
+
         if (startDate != null
                 && endDate != null
                 && startDate.isAfter(endDate)) {
@@ -156,6 +168,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         LocalDateTime startOfRange = startDate == null
                 ? null
                 : startDate.atStartOfDay();
+
         LocalDateTime endExclusive = endDate == null
                 ? null
                 : endDate.plusDays(1).atStartOfDay();
@@ -186,7 +199,9 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                         "Showtime not found with id: " + id
                 ));
 
-        LocalDateTime endTime = calculateEndTime(request.getStartTime(), showtime.getMovie());
+        LocalDateTime endTime =
+                calculateEndTime(request.getStartTime(), showtime.getMovie());
+
         List<Showtime> overlappingShowtimes =
                 showtimeRepository.findOverlappingShowtimesExcludingId(
                         showtime.getHall().getId(),
@@ -194,6 +209,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                         endTime,
                         id
                 );
+
         if (!overlappingShowtimes.isEmpty()) {
             String conflictingShowtimes = overlappingShowtimes.stream()
                     .map(existing -> String.format(
@@ -205,6 +221,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                             existing.getEndTime()
                     ))
                     .collect(java.util.stream.Collectors.joining(", "));
+
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     String.format(
@@ -224,27 +241,54 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         return mapToResponse(updatedShowtime);
     }
 
-    private LocalDateTime calculateEndTime(LocalDateTime startTime, Movie movie) {
+    private LocalDateTime calculateEndTime(
+            LocalDateTime startTime,
+            Movie movie
+    ) {
         Integer durationMinutes = movie.getDurationMinutes();
-        if (durationMinutes == null || durationMinutes <= 0 || durationMinutes > 600) {
+
+        if (durationMinutes == null
+                || durationMinutes <= 0
+                || durationMinutes > 600) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Thời lượng phim không hợp lệ (phải từ 1 đến 600 phút). Hãy sửa thời lượng phim trước khi tạo suất."
+                    "Thời lượng phim không hợp lệ (phải từ 1 đến 600 phút). "
+                    + "Hãy sửa thời lượng phim trước khi tạo suất."
             );
         }
+
         return startTime.plusMinutes(durationMinutes);
     }
 
+    /**
+     * Xóa suất chiếu:
+     * - 404 nếu không tồn tại.
+     * - 409 nếu đã phát sinh Booking.
+     * - Các ràng buộc dữ liệu khác vẫn được database bảo vệ.
+     */
     @Override
     @Transactional
     public void deleteShowtime(Long id) {
-        if (!showtimeRepository.existsById(id)) {
-            throw new RuntimeException(
-                    "Showtime not found with id: " + id
+
+        Showtime showtime = showtimeRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Không tìm thấy suất chiếu có ID: " + id
+                ));
+
+        // Giữ lịch sử đặt vé, kể cả đơn đã hủy hoặc hết hạn.
+        if (bookingRepository.existsByShowtimeId(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Không thể xóa suất chiếu vì đã có đơn đặt vé. "
+                    + "Cần giữ lại lịch sử đặt vé và thanh toán."
             );
         }
 
-        showtimeRepository.deleteById(id);
+        // Chưa tự động xóa ShowtimeSeat khi chưa kiểm tra
+        // các quan hệ entity và ràng buộc khóa ngoại.
+        showtimeRepository.delete(showtime);
+        showtimeRepository.flush();
     }
 
     private ShowtimeResponse mapToResponse(Showtime showtime) {

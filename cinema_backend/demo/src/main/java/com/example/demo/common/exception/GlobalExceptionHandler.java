@@ -1,8 +1,10 @@
+
 package com.example.demo.common.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.ConcurrencyFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -60,11 +62,13 @@ public class GlobalExceptionHandler {
     handleAccessDenied(AccessDeniedException ex) {
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
+
         ServletRequestAttributes requestAttributes =
                 (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
 
         if (requestAttributes != null) {
             var request = requestAttributes.getRequest();
+
             String authorities = authentication == null
                     ? "[]"
                     : authentication.getAuthorities().stream()
@@ -72,6 +76,7 @@ public class GlobalExceptionHandler {
                         .sorted()
                         .toList()
                         .toString();
+
             log.warn(
                     "Authorization denied for {} {} (authenticated={}, authorities={})",
                     request.getMethod(),
@@ -85,8 +90,68 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.FORBIDDEN)
                 .body(Map.of(
                         "message",
-                        ex.getMessage()
+                        ex.getMessage() != null
+                                ? ex.getMessage()
+                                : "Bạn không có quyền thực hiện thao tác này."
                 ));
+    }
+
+    /**
+     * Xử lý lỗi ràng buộc dữ liệu, chẳng hạn:
+     * - Xóa phim đang có suất chiếu.
+     * - Xóa suất chiếu đã có đơn đặt vé.
+     *
+     * Trả HTTP 409 Conflict thay vì để lỗi
+     * database đi vào luồng xử lý mặc định.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>>
+    handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+
+        ServletRequestAttributes requestAttributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+
+        String method = "";
+        String path = "";
+
+        if (requestAttributes != null) {
+            var request = requestAttributes.getRequest();
+            method = request.getMethod();
+            path = request.getRequestURI();
+        }
+
+        String message =
+                "Dữ liệu đang được sử dụng hoặc có liên kết "
+                + "với dữ liệu khác. Không thể thực hiện thao tác.";
+
+        if ("DELETE".equalsIgnoreCase(method)) {
+            if (path.matches(".*/movies/\\d+/?")) {
+                message =
+                        "Không thể xóa phim vì còn suất chiếu "
+                        + "hoặc dữ liệu liên quan.";
+            } else if (path.matches(".*/showtimes/\\d+/?")) {
+                message =
+                        "Không thể xóa suất chiếu vì đã có đơn đặt vé "
+                        + "hoặc dữ liệu liên quan.";
+            }
+        }
+
+        log.warn(
+                "Data integrity conflict: method={}, path={}, exception={}",
+                method,
+                path,
+                ex.getClass().getSimpleName()
+        );
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.CONFLICT.value());
+        body.put("error", "Conflict");
+        body.put("message", message);
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(body);
     }
 
     @ExceptionHandler(ConcurrencyFailureException.class)
