@@ -66,7 +66,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     String.format(
-                            "Phòng %s bị trùng lịch. Suất yêu cầu: %s – %s. Suất đang xung đột: %s",
+                            " %s bị trùng lịch. Suất yêu cầu: %s – %s. Suất đang xung đột: %s",
                             hall.getName(),
                             request.getStartTime(),
                             endTime,

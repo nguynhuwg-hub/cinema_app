@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authApi, getApiErrorMessage } from '../api/authApi';
 
 const RegisterPage = () => {
@@ -7,6 +7,7 @@ const RegisterPage = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
   const navigate = useNavigate();
 
   const submit = async (event) => {
@@ -29,7 +30,7 @@ const RegisterPage = () => {
 
       // Chuyển hướng người dùng về trang Login sau 3 giây để họ tiến hành đăng nhập sau khi xác thực
       setTimeout(() => {
-        navigate('/login');
+        navigate('/login', { state: location.state });
       }, 3000);
 
     } catch (requestError) {
@@ -100,7 +101,7 @@ const RegisterPage = () => {
         </form>
 
         <p className="form-footer">
-          Đã có tài khoản? <Link to="/login">Đăng nhập</Link>
+          Đã có tài khoản? <Link to="/login" state={location.state}>Đăng nhập</Link>
         </p>
       </div>
     </section>

@@ -256,7 +256,7 @@ const FeaturedMovieCarousel = ({ movies }) => {
         <h2>{activeMovie.title}</h2>
         <p>{activeMovie.description || 'Khám phá bộ phim và các suất chiếu đang mở bán tại CineF.'}</p>
         <div className="featured-movie-actions">
-          <Link className="hero-button" to={`/movies/${activeMovie.id}`}>Đặt vé ngay <span>→</span></Link>
+          <Link className="hero-button" to="/cinemas">Đặt vé ngay <span>→</span></Link>
           <Link className="featured-detail-link" to={`/movies/${activeMovie.id}`}>Xem chi tiết</Link>
         </div>
       </div>
