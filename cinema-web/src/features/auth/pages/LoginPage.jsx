@@ -136,7 +136,7 @@ navigate(destination, { replace: true });
         </form>
 
         <p className="form-footer">
-          Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
+          Chưa có tài khoản? <Link to="/register" state={location.state}>Đăng ký ngay</Link>
         </p>
       </div>
     </section>
