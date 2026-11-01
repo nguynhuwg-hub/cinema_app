@@ -15,6 +15,8 @@ import ManagerLayout from './components/layout/ManagerLayout/ManagerLayout';
 import AdminSystemLayout from './components/layout/AdminSystemLayout/AdminSystemLayout';
 import ProfileLayout from './components/layout/ProfileLayout/ProfileLayout';
 
+import ConcessionManagement from './features/concession/pages/ConcessionManagement';
+import CouponManagement from './features/concession/pages/CouponManagement';
 // Authentication
 import LoginPage from './features/auth/pages/LoginPage';
 import RegisterPage from './features/auth/pages/RegisterPage';
@@ -237,6 +239,15 @@ function App() {
               <Route
                 path="/admin/role-permissions"
                 element={<RolePermissionManagementPage />}
+              />
+              <Route
+                path="/admin/concessions"
+                element={<ConcessionManagement />}
+              />
+
+              <Route
+                path="/admin/coupons"
+                element={<CouponManagement />}
               />
 
               <Route

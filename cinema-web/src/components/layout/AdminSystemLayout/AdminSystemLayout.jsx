@@ -1,4 +1,3 @@
-
 import {
   NavLink,
   Outlet,
@@ -31,18 +30,28 @@ const AdminSystemLayout = () => {
       icon: '♙',
       label: 'Quản lý tài khoản'
     },
+    // --- ĐÃ THÊM 2 MỤC NÀY VÀO ---
+    {
+      to: '/admin/concessions',
+      icon: '🍿',
+      label: 'Quản lý F&B'
+    },
+    {
+      to: '/admin/coupons',
+      icon: '🎟️',
+      label: 'Quản lý Mã giảm giá'
+    },
+    // ----------------------------
     {
       to: '/profile',
       icon: '◉',
       label: 'Hồ sơ cá nhân'
     },
-
     {
-  to: '/',
-  icon: '↗',
-  label: 'Trải nghiệm khách hàng'
-}
-    
+      to: '/',
+      icon: '↗',
+      label: 'Trải nghiệm khách hàng'
+    }
   ];
 
   return (
