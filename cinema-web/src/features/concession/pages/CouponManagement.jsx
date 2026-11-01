@@ -4,14 +4,17 @@ import { couponApi } from '../api/couponApi';
 const CouponManagement = () => {
     const [coupons, setCoupons] = useState([]);
     const [formData, setFormData] = useState({ 
+        id: '',
         code: '', 
-        discountAmount: '', 
-        minOrderValue: '', 
+        discountValue: '', 
+        minBookingAmount: '', 
+        discountType: 'FIXED_AMOUNT', 
         startDate: '', 
         endDate: '', 
         usageLimit: '', 
-        active: true 
+        isActive: true 
     });
+    const [isEditing, setIsEditing] = useState(false);
     
     const [testCode, setTestCode] = useState('');
     const [orderTotal, setOrderTotal] = useState('');
@@ -30,151 +33,246 @@ const CouponManagement = () => {
         fetchCoupons();
     }, []);
 
+    const handleNumberChange = (field, value) => {
+        const rawValue = value.replace(/\D/g, '');
+        setFormData(prev => ({ ...prev, [field]: rawValue }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await couponApi.saveCoupon(formData);
-            alert('Tạo mã giảm giá thành công!');
-            setFormData({ code: '', discountAmount: '', minOrderValue: '', startDate: '', endDate: '', usageLimit: '', active: true });
+            const payload = {
+                id: formData.id || null,
+                code: formData.code,
+                discountType: formData.discountType,
+                discountValue: formData.discountValue ? Number(formData.discountValue) : 0,
+                minBookingAmount: formData.minBookingAmount ? Number(formData.minBookingAmount) : 0,
+                usageLimit: formData.usageLimit ? Number(formData.usageLimit) : null,
+                startDate: formData.startDate ? (formData.startDate.length === 16 ? `${formData.startDate}:00` : formData.startDate) : null,
+                endDate: formData.endDate ? (formData.endDate.length === 16 ? `${formData.endDate}:00` : formData.endDate) : null,
+                isActive: formData.isActive
+            };
+
+            await couponApi.saveCoupon(payload);
+            alert(isEditing ? 'Cập nhật mã giảm giá thành công!' : 'Tạo mã giảm giá thành công!');
+            setFormData({ id: '', code: '', discountValue: '', minBookingAmount: '', discountType: 'FIXED_AMOUNT', startDate: '', endDate: '', usageLimit: '', isActive: true });
+            setIsEditing(false);
             fetchCoupons();
         } catch (error) {
-            console.error("Lỗi khi lưu coupon:", error);
-            alert('Tạo mã giảm giá thất bại!');
+            console.error("Lỗi khi lưu coupon:", error.response?.data || error);
+            alert('Lưu mã giảm giá thất bại! Vui lòng kiểm tra lại dữ liệu.');
         }
     };
 
+    const handleEdit = (item) => {
+        setFormData({
+            id: item.id,
+            code: item.code || '',
+            discountValue: item.discountValue !== undefined ? String(item.discountValue) : '',
+            minBookingAmount: item.minBookingAmount !== undefined ? String(item.minBookingAmount) : '',
+            discountType: item.discountType || 'FIXED_AMOUNT',
+            startDate: item.startDate ? item.startDate.substring(0, 16) : '',
+            endDate: item.endDate ? item.endDate.substring(0, 16) : '',
+            usageLimit: item.usageLimit !== undefined ? String(item.usageLimit) : '',
+            isActive: item.isActive ?? item.active ?? true
+        });
+        setIsEditing(true);
+    };
+
     const handleApplyCoupon = async () => {
+        if (!testCode || !orderTotal) {
+            setDiscountResult({
+                success: false,
+                message: 'Vui lòng nhập đầy đủ mã coupon và tổng tiền đơn hàng!'
+            });
+            return;
+        }
+
         try {
-            const result = await couponApi.validateCoupon(testCode, orderTotal);
-            setDiscountResult(`Thành công! Số tiền được giảm: ${Number(result).toLocaleString()} VNĐ`);
+            const discount = await couponApi.validateCoupon(testCode, orderTotal);
+            const numericDiscount = Number(discount);
+
+            if (numericDiscount > 0) {
+                setDiscountResult({
+                    success: true,
+                    message: `Thành công! Số tiền được giảm: ${numericDiscount.toLocaleString('vi-VN')} VNĐ`
+                });
+            } else {
+                setDiscountResult({
+                    success: false,
+                    message: 'Mã giảm giá chưa đến thời gian áp dụng, đã hết hạn hoặc không đủ điều kiện đơn hàng!'
+                });
+            }
         } catch (error) {
             console.error("Lỗi áp dụng coupon:", error);
-            setDiscountResult(error.response?.data || 'Mã giảm giá không hợp lệ, chưa đến hạn hoặc đã hết lượt dùng.');
+            setDiscountResult({
+                success: false,
+                message: error.response?.data || 'Mã giảm giá không hợp lệ hoặc không tồn tại.'
+            });
         }
     };
 
     return (
-        <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1100px', margin: '0 auto' }}>
-            <h2>Quản lý Mã Giảm Giá (Coupon)</h2>
+        <div style={{ padding: '30px', color: '#ffffff' }}>
+            <div style={{ marginBottom: '24px' }}>
+                <p style={{ fontSize: '12px', color: '#888', textTransform: 'uppercase', marginBottom: '4px' }}>COUPON MANAGEMENT</p>
+                <h2 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>Quản lý Mã Giảm Giá (Coupon)</h2>
+            </div>
 
-            <form onSubmit={handleSubmit} style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px', marginBottom: '20px', display: 'flex', gap: '12px', flexWrap: 'wrap', border: '1px solid #dee2e6' }}>
-                <input 
-                    type="text" 
-                    placeholder="Mã Code (VD: SUMMER2026)" 
-                    value={formData.code} 
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })} 
-                    required 
-                    style={{ padding: '10px', flex: '1 1 180px', borderRadius: '4px', border: '1px solid #ccc' }}
-                />
-                <input 
-                    type="number" 
-                    placeholder="Số tiền giảm (VNĐ)" 
-                    value={formData.discountAmount} 
-                    onChange={(e) => setFormData({ ...formData, discountAmount: e.target.value })} 
-                    required 
-                    style={{ padding: '10px', flex: '1 1 150px', borderRadius: '4px', border: '1px solid #ccc' }}
-                />
-                <input 
-                    type="number" 
-                    placeholder="Đơn tối thiểu (VNĐ)" 
-                    value={formData.minOrderValue} 
-                    onChange={(e) => setFormData({ ...formData, minOrderValue: e.target.value })} 
-                    style={{ padding: '10px', flex: '1 1 150px', borderRadius: '4px', border: '1px solid #ccc' }}
-                />
-                <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column' }}>
-                    <label style={{ fontSize: '12px', color: '#666', marginBottom: '2px' }}>Thời gian bắt đầu:</label>
+            <form onSubmit={handleSubmit} style={{ background: '#161b22', padding: '24px', borderRadius: '12px', marginBottom: '25px', display: 'flex', gap: '16px', flexWrap: 'wrap', border: '1px solid #30363d' }}>
+                <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', color: '#aaa' }}>Mã Code</label>
+                    <input 
+                        type="text" 
+                        placeholder="VD: SUMMER2026" 
+                        value={formData.code} 
+                        onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })} 
+                        required 
+                        style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none' }}
+                    />
+                </div>
+
+                <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', color: '#aaa' }}>Số tiền giảm (VNĐ)</label>
+                    <input 
+                        type="text" 
+                        placeholder="Nhập số tiền..." 
+                        value={formData.discountValue ? Number(formData.discountValue).toLocaleString('vi-VN') : ''} 
+                        onChange={(e) => handleNumberChange('discountValue', e.target.value)} 
+                        required 
+                        style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none' }}
+                    />
+                </div>
+
+                <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', color: '#aaa' }}>Đơn tối thiểu (VNĐ)</label>
+                    <input 
+                        type="text" 
+                        placeholder="Nhập đơn tối thiểu..." 
+                        value={formData.minBookingAmount ? Number(formData.minBookingAmount).toLocaleString('vi-VN') : ''} 
+                        onChange={(e) => handleNumberChange('minBookingAmount', e.target.value)} 
+                        style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none' }}
+                    />
+                </div>
+
+                <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', color: '#aaa' }}>Thời gian bắt đầu:</label>
                     <input 
                         type="datetime-local" 
                         value={formData.startDate} 
                         onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} 
                         required 
-                        style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                        style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none', colorScheme: 'dark' }}
                     />
                 </div>
-                <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column' }}>
-                    <label style={{ fontSize: '12px', color: '#666', marginBottom: '2px' }}>Thời gian kết thúc:</label>
+
+                <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', color: '#aaa' }}>Thời gian kết thúc:</label>
                     <input 
                         type="datetime-local" 
                         value={formData.endDate} 
                         onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} 
                         required 
-                        style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                        style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none', colorScheme: 'dark' }}
                     />
                 </div>
-                <input 
-                    type="number" 
-                    placeholder="Giới hạn lượt dùng" 
-                    value={formData.usageLimit} 
-                    onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value })} 
-                    style={{ padding: '10px', flex: '1 1 140px', borderRadius: '4px', border: '1px solid #ccc' }}
-                />
-                <div style={{ width: '100%', marginTop: '5px' }}>
-                    <button type="submit" style={{ background: '#28a745', color: 'white', border: 'none', padding: '10px 20px', cursor: 'pointer', borderRadius: '4px', fontWeight: 'bold' }}>
-                        Tạo mã giảm giá mới
+
+                <div style={{ flex: '1 1 140px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', color: '#aaa' }}>Giới hạn lượt dùng</label>
+                    <input 
+                        type="text" 
+                        placeholder="Không giới hạn" 
+                        value={formData.usageLimit} 
+                        onChange={(e) => handleNumberChange('usageLimit', e.target.value)} 
+                        style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none' }}
+                    />
+                </div>
+
+                <div style={{ width: '100%', display: 'flex', gap: '10px', marginTop: '5px' }}>
+                    <button type="submit" style={{ background: '#ff4d4f', color: 'white', border: 'none', padding: '10px 20px', cursor: 'pointer', borderRadius: '6px', fontWeight: 'bold' }}>
+                        {isEditing ? 'Cập nhật mã giảm giá' : 'Tạo mã giảm giá mới'}
                     </button>
+                    {isEditing && (
+                        <button type="button" onClick={() => { setIsEditing(false); setFormData({ id: '', code: '', discountValue: '', minBookingAmount: '', discountType: 'FIXED_AMOUNT', startDate: '', endDate: '', usageLimit: '', isActive: true }); }} style={{ background: '#30363d', color: 'white', border: 'none', padding: '10px 20px', cursor: 'pointer', borderRadius: '6px' }}>
+                            Hủy bỏ
+                        </button>
+                    )}
                 </div>
             </form>
 
-            <div style={{ background: '#e9ecef', padding: '15px', borderRadius: '8px', marginBottom: '25px', border: '1px solid #ced4da' }}>
-                <h4 style={{ margin: '0 0 10px 0' }}>Kiểm tra áp dụng mã giảm giá (Mô phỏng thanh toán)</h4>
+            <div style={{ background: '#161b22', padding: '20px', borderRadius: '12px', marginBottom: '25px', border: '1px solid #30363d' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#fff' }}>Kiểm tra áp dụng mã giảm giá (Mô phỏng thanh toán)</h4>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <input 
                         type="text" 
                         placeholder="Nhập mã coupon" 
                         value={testCode} 
                         onChange={(e) => setTestCode(e.target.value.toUpperCase())} 
-                        style={{ padding: '8px', flex: '1 1 200px', borderRadius: '4px', border: '1px solid #ccc' }}
+                        style={{ padding: '10px 12px', flex: '1 1 200px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none' }}
                     />
                     <input 
-                        type="number" 
+                        type="text" 
                         placeholder="Tổng tiền đơn hàng (VNĐ)" 
-                        value={orderTotal} 
-                        onChange={(e) => setOrderTotal(e.target.value)} 
-                        style={{ padding: '8px', flex: '1 1 200px', borderRadius: '4px', border: '1px solid #ccc' }}
+                        value={orderTotal ? Number(orderTotal).toLocaleString('vi-VN') : ''} 
+                        onChange={(e) => setOrderTotal(e.target.value.replace(/\D/g, ''))} 
+                        style={{ padding: '10px 12px', flex: '1 1 200px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none' }}
                     />
-                    <button onClick={handleApplyCoupon} style={{ background: '#007bff', color: 'white', border: 'none', padding: '8px 16px', cursor: 'pointer', borderRadius: '4px' }}>
+                    <button onClick={handleApplyCoupon} style={{ background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', padding: '10px 16px', cursor: 'pointer', borderRadius: '6px', fontWeight: '500' }}>
                         Kiểm tra mã
                     </button>
                 </div>
-                {discountResult && <p style={{ marginTop: '10px', fontWeight: 'bold', color: discountResult.includes('Thành công') ? 'green' : 'red' }}>{discountResult}</p>}
+                {discountResult && (
+                    <p style={{ marginTop: '12px', fontWeight: 'bold', color: discountResult.success ? '#2ea043' : '#f85149' }}>
+                        {discountResult.message}
+                    </p>
+                )}
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <thead>
-                    <tr style={{ background: '#343a40', color: 'white', textAlign: 'left' }}>
-                        <th style={{ padding: '12px' }}>ID</th>
-                        <th style={{ padding: '12px' }}>Mã Code</th>
-                        <th style={{ padding: '12px' }}>Giảm giá</th>
-                        <th style={{ padding: '12px' }}>Đơn tối thiểu</th>
-                        <th style={{ padding: '12px' }}>Thời hạn</th>
-                        <th style={{ padding: '12px' }}>Đã dùng / Giới hạn</th>
-                        <th style={{ padding: '12px' }}>Trạng thái</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {coupons.map((item) => (
-                        <tr key={item.id} style={{ borderBottom: '1px solid #dee2e6' }}>
-                            <td style={{ padding: '12px' }}>{item.id}</td>
-                            <td style={{ padding: '12px', fontWeight: 'bold', color: '#007bff' }}>{item.code}</td>
-                            <td style={{ padding: '12px' }}>{Number(item.discountAmount).toLocaleString()} đ</td>
-                            <td style={{ padding: '12px' }}>{Number(item.minOrderValue || 0).toLocaleString()} đ</td>
-                            <td style={{ padding: '12px', fontSize: '13px' }}>{item.startDate} <br/>đến {item.endDate}</td>
-                            <td style={{ padding: '12px' }}>{item.usedCount} / {item.usageLimit || 'Không giới hạn'}</td>
-                            <td style={{ padding: '12px' }}>
-                                {item.active ? 
-                                    <span style={{ color: 'green', fontWeight: 'bold' }}>● Hoạt động</span> : 
-                                    <span style={{ color: 'red', fontWeight: 'bold' }}>● Đã khóa</span>
-                                }
-                            </td>
+            <div style={{ background: '#161b22', borderRadius: '12px', border: '1px solid #30363d', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                        <tr style={{ background: '#21262d', color: '#8b949e', borderBottom: '1px solid #30363d', fontSize: '13px' }}>
+                            <th style={{ padding: '14px 16px' }}>ID</th>
+                            <th style={{ padding: '14px 16px' }}>Mã Code</th>
+                            <th style={{ padding: '14px 16px' }}>Giảm giá</th>
+                            <th style={{ padding: '14px 16px' }}>Đơn tối thiểu</th>
+                            <th style={{ padding: '14px 16px' }}>Thời hạn</th>
+                            <th style={{ padding: '14px 16px' }}>Đã dùng / Giới hạn</th>
+                            <th style={{ padding: '14px 16px' }}>Trạng thái</th>
+                            <th style={{ padding: '14px 16px', textAlign: 'center' }}>Hành động</th>
                         </tr>
-                    ))}
-                    {coupons.length === 0 && (
-                        <tr>
-                            <td colSpan="7" style={{ textAlign: 'center', padding: '20px', color: '#6c757d' }}>Chưa có mã giảm giá nào trong hệ thống.</td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {coupons.map((item) => {
+                            const activeStatus = item.isActive ?? item.active ?? true;
+                            return (
+                                <tr key={item.id} style={{ borderBottom: '1px solid #30363d', fontSize: '14px' }}>
+                                    <td style={{ padding: '14px 16px', color: '#8b949e' }}>{item.id}</td>
+                                    <td style={{ padding: '14px 16px', fontWeight: 'bold', color: '#58a6ff' }}>{item.code}</td>
+                                    <td style={{ padding: '14px 16px', color: '#ff4d4f', fontWeight: 'bold' }}>{Number(item.discountValue || 0).toLocaleString()} đ</td>
+                                    <td style={{ padding: '14px 16px', color: '#ccc' }}>{Number(item.minBookingAmount || 0).toLocaleString()} đ</td>
+                                    <td style={{ padding: '14px 16px', fontSize: '13px', color: '#aaa' }}>{item.startDate} <br/>đến {item.endDate}</td>
+                                    <td style={{ padding: '14px 16px', color: '#ccc' }}>{item.usedCount || 0} / {item.usageLimit || 'Không giới hạn'}</td>
+                                    <td style={{ padding: '14px 16px' }}>
+                                        {activeStatus ? 
+                                            <span style={{ color: '#2ea043', fontWeight: 'bold' }}>● Hoạt động</span> : 
+                                            <span style={{ color: '#f85149', fontWeight: 'bold' }}>● Đã khóa</span>
+                                        }
+                                    </td>
+                                    <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                                        <button onClick={() => handleEdit(item)} style={{ background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', padding: '6px 14px', cursor: 'pointer', borderRadius: '6px', fontWeight: '500' }}>Sửa</button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                        {coupons.length === 0 && (
+                            <tr>
+                                <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#8b949e' }}>Chưa có mã giảm giá nào trong hệ thống.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 };
