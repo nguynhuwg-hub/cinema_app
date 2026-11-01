@@ -23,7 +23,7 @@ public class ShowtimeController {
     private final ShowtimeService showtimeService;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('SHOWTIME_CREATE') or hasRole('MANAGER')")
+    @PreAuthorize("hasAuthority('SHOWTIME_CREATE')")
     public ResponseEntity<ShowtimeResponse> createShowtime(
             @Valid @RequestBody CreateShowtimeRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -46,7 +46,7 @@ public class ShowtimeController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('SHOWTIME_UPDATE') or hasRole('MANAGER')")
+    @PreAuthorize("hasAuthority('SHOWTIME_UPDATE')")
     public ResponseEntity<ShowtimeResponse> updateShowtime(
             @PathVariable Long id,
             @Valid @RequestBody UpdateShowtimeRequest request) {
@@ -55,7 +55,7 @@ public class ShowtimeController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('SHOWTIME_DELETE') or hasRole('MANAGER')")
+    @PreAuthorize("hasAuthority('SHOWTIME_DELETE')")
     public ResponseEntity<Void> deleteShowtime(@PathVariable Long id) {
         showtimeService.deleteShowtime(id);
         return ResponseEntity.noContent().build();

@@ -37,56 +37,14 @@ const LoginPage = () => {
 
       // Chuyển hướng về trang trước đó hoặc trang chủ
       const roles = result.roles ?? result.role ?? [];
+      const normalizedRoles = Array.isArray(roles) ? roles : [roles];
+      const isAdmin = normalizedRoles.some((role) => {
+        const value = typeof role === 'string' ? role : role?.name;
+        return value === 'ADMIN' || value === 'ROLE_ADMIN';
+      });
+      const originPath = location.state?.from?.pathname || '/';
+      navigate(isAdmin ? '/admin/dashboard' : originPath, { replace: true });
 
-const normalizedRoles = (Array.isArray(roles) ? roles : [roles])
-  .map((role) => typeof role === 'string' ? role : role?.name);
-
-const isAdmin = normalizedRoles.some(
-  (role) => role === 'ADMIN' || role === 'ROLE_ADMIN'
-);
-
-const isManager = normalizedRoles.some(
-  (role) => role === 'MANAGER' || role === 'ROLE_MANAGER'
-);
-
-const requestedPath = location.state?.from?.pathname;
-
-let destination = '/';
-
-if (requestedPath?.startsWith('/admin/')) {
-  if (isAdmin) {
-    destination = requestedPath;
-  }
-} else if (
-  requestedPath === '/admin' &&
-  isAdmin
-) {
-  destination = '/admin/role-permissions';
-} else if (
-  requestedPath?.startsWith('/manager/') &&
-  isManager
-) {
-  destination = requestedPath;
-} else if (
-  requestedPath === '/manager' &&
-  isManager
-) {
-  destination = '/manager/dashboard';
-} else if (
-  requestedPath &&
-  !requestedPath.startsWith('/admin') &&
-  !requestedPath.startsWith('/manager') &&
-  requestedPath.startsWith('/') &&
-  !requestedPath.startsWith('//')
-) {
-  destination = requestedPath;
-} else if (isAdmin) {
-  destination = '/admin/role-permissions';
-} else if (isManager) {
-  destination = '/manager/dashboard';
-}
-
-navigate(destination, { replace: true });
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, 'Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản hoặc email kích hoạt.'));
     } finally {
@@ -100,10 +58,6 @@ navigate(destination, { replace: true });
         <p className="eyebrow">CINEMA WEB</p>
         <h1>Chào mừng trở lại</h1>
         <p className="muted">Đăng nhập để quản lý hồ sơ và trải nghiệm điện ảnh của bạn.</p>
-
-        {location.state?.message && (
-          <p className="form-error" role="alert">{location.state.message}</p>
-        )}
 
         {error && <p className="form-error" role="alert">{error}</p>}
 

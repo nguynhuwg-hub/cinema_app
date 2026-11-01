@@ -1,8 +1,5 @@
 package com.example.demo.module.booking.dto;
 
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,13 +8,8 @@ import java.util.List;
 @Getter
 @Setter
 public class BookingRequest {
-
-    @NotNull
-    @Positive
+    private Long userId;
     private Long showtimeId;
-
-    @NotEmpty
-    private List<@NotNull @Positive Long> seatIds;
-
-    private List<Long> concessionIds;
+    private List<Long> seatIds;        // Danh sách ID các ghế muốn đặt
+    private List<Long> concessionIds;  // Danh sách ID các món bắp nước chọn kèm (nếu có)
 }

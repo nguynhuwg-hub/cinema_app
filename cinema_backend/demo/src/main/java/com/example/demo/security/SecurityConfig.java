@@ -1,4 +1,3 @@
-
 package com.example.demo.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,7 +7,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -17,7 +15,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import jakarta.servlet.DispatcherType;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+
 
 @Configuration
 @EnableWebSecurity
@@ -33,176 +32,53 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authConfig
-    ) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http
-    ) throws Exception {
-
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            // 1. Tắt CSRF và bật CORS mặc định
             .csrf(AbstractHttpConfigurer::disable)
             .cors(Customizer.withDefaults())
-
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(
-                    SessionCreationPolicy.STATELESS
-                )
-            )
-
+            
+            // 2. Không lưu Session trên Server (Stateless JWT)
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            
+            // 3. Cấu hình Phân quyền API
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Preflight
+                .requestMatchers("/api/v1/auth/**").permitAll()        // Auth APIs (có v1)
+                .requestMatchers("/api/auth/**").permitAll()         // Auth APIs không có v1
+                .requestMatchers("/api/v1/bookings/**").permitAll() 
+                .requestMatchers("/ws-cinema/**").permitAll()        // WebSocket STOMP Handshake
+                .requestMatchers("/api/cinemas/**").permitAll()        // Cinema module APIs
+                .requestMatchers("/api/cities/**").permitAll()
+                .requestMatchers("/api/halls/**").permitAll()
+                .requestMatchers("/api/seats/**").permitAll()
+                .requestMatchers("/api/v1/movies/**").permitAll()      // Movie module APIs
+                .requestMatchers("/api/v1/genres/**").permitAll()
+                .requestMatchers("/api/v1/showtimes/**").permitAll()   // Showtime module APIs
+                
+                // === BỔ SUNG QUYỀN CHO F&B (CONCESSIONS) & COUPONS ===
+                .requestMatchers("/api/concessions/manage/**").hasRole("ADMIN") // Quản lý F&B yêu cầu ADMIN
+                .requestMatchers("/api/concessions/**").permitAll()            // Xem menu & tính tiền cho phép tất cả
+                .requestMatchers("/api/coupons/manage/**").hasRole("ADMIN")     // Quản lý Coupon yêu cầu ADMIN
+                .requestMatchers("/api/coupons/**").permitAll()                // Kiểm tra mã giảm giá cho phép tất cả
+                // ====================================================
 
-                // Cho phép Spring Boot xử lý lỗi nội bộ
-                .dispatcherTypeMatchers(
-                    DispatcherType.ERROR
-                ).permitAll()
-
-                // CORS preflight
-                .requestMatchers(
-                    HttpMethod.OPTIONS,
-                    "/**"
-                ).permitAll()
-
-                // Error endpoint
-                .requestMatchers("/error").permitAll()
-
-                // Authentication APIs
-                .requestMatchers(
-                    "/api/v1/auth/**",
-                    "/api/auth/**"
-                ).permitAll()
-
-                // VNPay callbacks
-                // Chữ ký VNPay vẫn phải được xác thực
-                // tại tầng xử lý callback
-                .requestMatchers(
-                    HttpMethod.GET,
-                    "/api/v1/payments/vnpay/ipn",
-                    "/api/v1/payments/vnpay/return"
-                ).permitAll()
-
-                // Booking
-                .requestMatchers(
-                    "/api/v1/bookings/**"
-                ).authenticated()
-
-                // Ticket check-in
-                .requestMatchers(
-                    HttpMethod.POST,
-                    "/api/v1/tickets/check-in"
-                ).hasAnyRole(
-                    "STAFF",
-                    "MANAGER",
-                    "ADMIN"
-                )
-
-                // Các API ticket khác
-                .requestMatchers(
-                    "/api/v1/tickets/**"
-                ).authenticated()
-
-                // Payment
-                .requestMatchers(
-                    "/api/v1/payments/**"
-                ).authenticated()
-
-                // Showtime seat management
-                .requestMatchers(
-                    HttpMethod.PATCH,
-                    "/api/v1/showtimes/*/seats/status"
-                ).authenticated()
-
-                // WebSocket
-                .requestMatchers(
-                    "/ws-cinema/**"
-                ).permitAll()
-
-                // Cinema APIs
-                .requestMatchers(
-                    "/api/cinemas/**",
-                    "/api/cities/**",
-                    "/api/halls/**",
-                    "/api/seats/**"
-                ).permitAll()
-
-                // Public movie APIs: chỉ đọc
-                .requestMatchers(
-                    HttpMethod.GET,
-                    "/api/v1/movies/**"
-                ).permitAll()
-
-                // Public genre APIs: chỉ đọc
-                .requestMatchers(
-                    HttpMethod.GET,
-                    "/api/v1/genres/**"
-                ).permitAll()
-
-                // Public showtime APIs: chỉ đọc
-                .requestMatchers(
-                    HttpMethod.GET,
-                    "/api/v1/showtimes/**"
-                ).permitAll()
-
-                // Movie management:
-                // Yêu cầu đăng nhập, quyền chi tiết
-                // được kiểm tra tại Controller/Service
-                .requestMatchers(
-                    "/api/v1/movies/**"
-                ).authenticated()
-
-                // Genre management
-                .requestMatchers(
-                    "/api/v1/genres/**"
-                ).authenticated()
-
-                // Showtime management
-                .requestMatchers(
-                    "/api/v1/showtimes/**"
-                ).authenticated()
-
-                // Review management
-                .requestMatchers(
-                    "/api/v1/reviews/admin/**"
-                ).hasAnyRole(
-                    "MANAGER",
-                    "ADMIN"
-                )
-
-                // Public review reading
-                .requestMatchers(
-                    HttpMethod.GET,
-                    "/api/v1/reviews/**"
-                ).permitAll()
-
-                // Other review operations require login
-                .requestMatchers(
-                    "/api/v1/reviews/**"
-                ).authenticated()
-
-                // User and notifications
-                .requestMatchers(
-                    "/api/v1/users/**",
-                    "/api/v1/notifications/**"
-                ).authenticated()
-
-                // Role and permission management
-                .requestMatchers(
-                    "/api/v1/roles/**",
-                    "/api/v1/permissions/**"
-                ).hasRole("ADMIN")
-
-                // Remaining APIs
-                .anyRequest().authenticated()
+                .requestMatchers("/api/v1/reviews/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/reviews/**").permitAll()
+                .requestMatchers("/api/v1/users/**").authenticated()
+                .requestMatchers("/api/v1/notifications/**").authenticated()
+                .requestMatchers("/api/v1/roles/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/permissions/**").hasRole("ADMIN")
+                .anyRequest().authenticated()                       // Các API khác cần Token
             );
 
-        http.addFilterBefore(
-            jwtAuthenticationFilter,
-            UsernamePasswordAuthenticationFilter.class
-        );
+        // 4. Đặt JwtAuthenticationFilter trước UsernamePasswordAuthenticationFilter
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

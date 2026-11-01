@@ -4,14 +4,7 @@ import { userApi } from '../api/userApi';
 import './ProfilePage.css'; // File CSS custom đính kèm bên dưới
 
 const ProfilePage = () => {
-  const { user, updateUserProfile } = useAuth();
-  const roles = user?.roles ?? [];
-
-const roleNames = (Array.isArray(roles) ? roles : [roles])
-  .map((role) =>
-    typeof role === 'string' ? role : role?.name
-  )
-  .filter(Boolean);
+  const { user, login, token } = useAuth();
   const [activeTab, setActiveTab] = useState('info'); // 'info' hoặc 'password'
 
   // State cập nhật thông tin cá nhân
@@ -56,12 +49,11 @@ const roleNames = (Array.isArray(roles) ? roles : [roles])
     setInfoMessage({ text: '', type: '' });
 
     try {
-     const updatedUser = await userApi.updateProfile({
-  fullName: formData.name,
-  phone: formData.phone,
-});
-
-updateUserProfile(updatedUser);
+      const updatedUser = await userApi.updateProfile({
+        fullName: formData.name,
+        phone: formData.phone,
+      });
+      login(updatedUser, token);
       setInfoMessage({ text: 'Cập nhật thông tin thành công!', type: 'success' });
     } catch (error) {
       setInfoMessage({
@@ -111,22 +103,18 @@ updateUserProfile(updatedUser);
   return (
     <div className="profile-wrapper">
       {/* Header Profile có Hiệu ứng Gradient Glassmorphism */}
-      <div className="profile-user-info">
-  <h2>{formData.name || 'Người dùng'}</h2>
-
-  <p className="user-email">{formData.email}</p>
-
-  <div className="profile-role-list">
-    {roleNames.map((role) => (
-      <span
-        key={role}
-        className={`role-badge role-${role.replace(/^ROLE_/, '').toLowerCase()}`}
-      >
-        {role.replace(/^ROLE_/, '')}
-      </span>
-    ))}
-  </div>
-</div>
+      <div className="profile-card profile-header-card">
+        <div className="profile-avatar-container">
+          <div className="profile-avatar">{avatarLetter}</div>
+        </div>
+        <div className="profile-user-info">
+          <h2>{formData.name || 'Người dùng'}</h2>
+          <p className="user-email">{formData.email}</p>
+          <span className={`role-badge role-${(user?.role || 'CUSTOMER').toLowerCase()}`}>
+            {user?.role || 'CUSTOMER'}
+          </span>
+        </div>
+      </div>
 
       {/* Thanh Tab Chuyển Đổi với Animation Slide */}
       <div className="profile-tabs">

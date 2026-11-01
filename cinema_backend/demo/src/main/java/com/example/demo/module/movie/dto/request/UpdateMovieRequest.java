@@ -1,7 +1,6 @@
 package com.example.demo.module.movie.dto.request;
 
 import com.example.demo.entity.enums.MovieStatus;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.*;
 
@@ -18,7 +17,6 @@ public class UpdateMovieRequest {
     private String description;
 
     @Min(value = 1, message = "Thời lượng phim phải lớn hơn 0")
-    @Max(value = 600, message = "Thời lượng phim không được vượt quá 600 phút")
     private Integer durationMinutes;
 
     private LocalDate releaseDate;
