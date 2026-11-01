@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
+import com.example.demo.common.enums.AccountStatus;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
@@ -57,10 +58,23 @@ public class CustomUserDetailsService implements UserDetailsService {
             });
         });
 
-        return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),
-                user.getPasswordHash(),
-                authorities
-        );
+        
+boolean enabled =
+        user.getStatus() == AccountStatus.ACTIVE;
+
+boolean accountNonLocked =
+        user.getStatus() != AccountStatus.TEMPORARY_LOCKED
+        && user.getStatus() != AccountStatus.PERMANENT_LOCKED;
+
+return new org.springframework.security.core.userdetails.User(
+        user.getEmail(),
+        user.getPasswordHash(),
+        enabled,
+        true,
+        true,
+        accountNonLocked,
+        authorities
+);
+
     }
 }

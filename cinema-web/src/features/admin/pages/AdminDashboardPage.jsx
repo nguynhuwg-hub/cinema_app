@@ -1,11 +1,38 @@
 import { Link } from 'react-router-dom';
 
 const modules = [
-  { number: '01', icon: '▣', title: 'Phim & thể loại', detail: 'Biên tập danh mục phim, thông tin phát hành và thể loại.', path: '/admin/movies', color: 'coral' },
-  { number: '02', icon: '✎', title: 'Quản lý bài đánh giá phim', detail: 'Viết, chỉnh sửa và gắn bài đánh giá với phim.', path: '/admin/reviews', color: 'blue' },
-  { number: '03', icon: '⌂', title: 'Rạp & phòng chiếu', detail: 'Quản lý cụm rạp, phòng, sơ đồ và cấu hình ghế.', path: '/admin/cinemas', color: 'gold' },
-  { number: '04', icon: '◷', title: 'Lịch suất chiếu', detail: 'Sắp xếp lịch trình và cập nhật giá vé theo suất.', path: '/admin/showtimes', color: 'green' },
-  { number: '05', icon: '♙', title: 'Tài khoản khách hàng', detail: 'Theo dõi vai trò, trạng thái và gửi thông báo.', path: '/admin/users', color: 'coral' },
+  {
+    number: '01',
+    icon: '▣',
+    title: 'Phim & thể loại',
+    detail: 'Biên tập danh mục phim và thể loại.',
+    path: '/manager/movies',
+    color: 'coral',
+  },
+  {
+    number: '02',
+    icon: '✎',
+    title: 'Quản lý bài đánh giá phim',
+    detail: 'Quản lý bài review và nội dung.',
+    path: '/manager/reviews',
+    color: 'blue',
+  },
+  {
+    number: '03',
+    icon: '⌂',
+    title: 'Rạp & phòng chiếu',
+    detail: 'Quản lý rạp, phòng và ghế.',
+    path: '/manager/cinemas',
+    color: 'gold',
+  },
+  {
+    number: '04',
+    icon: '◷',
+    title: 'Lịch suất chiếu',
+    detail: 'Tạo và điều chỉnh lịch chiếu.',
+    path: '/manager/showtimes',
+    color: 'green',
+  },
 ];
 
 const AdminDashboardPage = () => (

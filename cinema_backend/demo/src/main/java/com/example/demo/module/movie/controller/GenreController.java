@@ -4,7 +4,6 @@ import com.example.demo.module.movie.dto.request.GenreRequest;
 import com.example.demo.module.movie.dto.response.GenreResponse;
 import com.example.demo.module.movie.service.GenreService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,10 +13,13 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/genres")
-@RequiredArgsConstructor
 public class GenreController {
 
     private final GenreService genreService;
+
+    public GenreController(GenreService genreService) {
+        this.genreService = genreService;
+    }
 
     @PostMapping
     @PreAuthorize("hasAuthority('GENRE_CREATE')")
@@ -28,7 +30,6 @@ public class GenreController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('GENRE_READ')")
     public ResponseEntity<List<GenreResponse>> getAllGenres() {
         return ResponseEntity.ok(genreService.getAllGenres());
     }

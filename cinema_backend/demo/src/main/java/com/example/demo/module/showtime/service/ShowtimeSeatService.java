@@ -7,6 +7,14 @@ import com.example.demo.module.showtime.dto.response.ShowtimeSeatResponse;
 import java.util.List;
 
 public interface ShowtimeSeatService {
-    SeatLayoutResponse getSeatLayoutByShowtimeId(Long showtimeId);
-    List<ShowtimeSeatResponse> updateSeatStatus(Long showtimeId, UpdateSeatStatusRequest request, String emailOrUsername);
+
+    SeatLayoutResponse getSeatLayoutByShowtimeId(
+            Long showtimeId
+    );
+
+    List<ShowtimeSeatResponse> updateSeatStatus(
+            Long showtimeId,
+            UpdateSeatStatusRequest request,
+            String email
+    );
 }

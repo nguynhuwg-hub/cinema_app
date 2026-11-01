@@ -183,3 +183,37 @@
 h3{
     color:#1e1e2f;
 }
+.profile-role-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.profile-role-list .role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profile-role-list .role-admin {
+  background: #3d252c;
+  color: #ff9b8b;
+  border: 1px solid #80505a;
+}
+
+.profile-role-list .role-manager {
+  background: #393021;
+  color: #e8c99b;
+  border: 1px solid #78613f;
+}
+
+.profile-role-list .role-staff {
+  background: #203348;
+  color: #8ecbff;
+  border: 1px solid #466887;
+}

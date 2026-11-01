@@ -1,12 +1,13 @@
 package com.example.demo.module.showtime.dto.response;
 
-import com.example.demo.entity.enums.SeatStatus;
 import com.example.demo.common.enums.SeatType;
+import com.example.demo.entity.enums.SeatStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -16,12 +17,22 @@ import java.time.LocalDateTime;
 public class ShowtimeSeatResponse {
 
     private Long id;
+
     private Long showtimeId;
+
     private Long seatId;
-    private String seatNumber; 
+
+    private String seatNumber;
+
     private SeatType seatType;
+
     private SeatStatus status;
+
     private Long heldByUserId;
+
     private String heldByUserName;
+
     private LocalDateTime holdExpiresAt;
+
+    private BigDecimal price;
 }

@@ -31,14 +31,12 @@ public class MovieController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('MOVIE_READ')")
     public ResponseEntity<MovieDetailResponse> getMovieById(
             @PathVariable Long id) {
         return ResponseEntity.ok(movieService.getMovieById(id));
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('MOVIE_READ')")
     public ResponseEntity<List<MovieResponse>> searchMovies(
             @Valid MovieSearchFilter filter) {
         return ResponseEntity.ok(movieService.searchMovies(filter));

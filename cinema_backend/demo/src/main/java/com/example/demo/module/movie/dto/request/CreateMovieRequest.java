@@ -20,6 +20,7 @@ public class CreateMovieRequest {
 
     @NotNull(message = "Thời lượng phim không được để trống")
     @Min(value = 1, message = "Thời lượng phim phải lớn hơn 0")
+    @Max(value = 600, message = "Thời lượng phim không được vượt quá 600 phút")
     private Integer durationMinutes;
 
     private LocalDate releaseDate;

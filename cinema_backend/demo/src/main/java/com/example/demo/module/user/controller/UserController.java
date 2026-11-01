@@ -73,7 +73,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/roles")
-    @PreAuthorize("hasAuthority('USER_ASSIGN_ROLES')")
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('USER_ASSIGN_ROLES')")
     public ResponseEntity<UserResponse> assignRoles(
             @PathVariable Long id,
             @Valid @RequestBody AssignRolesRequest request) {

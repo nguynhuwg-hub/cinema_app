@@ -20,4 +20,10 @@ public class ShowtimeSearchFilter {
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate date;
+
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    private LocalDate startDate;
+
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    private LocalDate endDate;
 }

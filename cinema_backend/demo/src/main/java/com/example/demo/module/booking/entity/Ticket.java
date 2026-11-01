@@ -5,13 +5,14 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(
     name = "tickets",
     uniqueConstraints = {
         @UniqueConstraint(
-            name = "uk_booking_seat", 
+            name = "uk_booking_seat",
             columnNames = {"booking_id", "seat_id"}
         )
     }
@@ -21,6 +22,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class Ticket {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -33,7 +35,12 @@ public class Ticket {
     @JoinColumn(name = "seat_id", nullable = false)
     private Seat seat;
 
-    @Column(name = "ticket_code", nullable = false, unique = true, length = 100)
+    @Column(
+        name = "ticket_code",
+        nullable = false,
+        unique = true,
+        length = 100
+    )
     private String ticketCode;
 
     @Column(nullable = false, precision = 10, scale = 2)
@@ -42,4 +49,8 @@ public class Ticket {
     @Column(name = "is_checked_in", nullable = false)
     @Builder.Default
     private Boolean isCheckedIn = false;
+
+    // Thời điểm nhân viên quét vé thành công
+    @Column(name = "checked_in_at")
+    private LocalDateTime checkedInAt;
 }

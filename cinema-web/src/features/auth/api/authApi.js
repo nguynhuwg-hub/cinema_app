@@ -14,6 +14,19 @@ const unwrap = (response) => {
   return payload;
 };
 
+let pendingSessionRefresh = null;
+
+export const refreshSessionOnce = (refreshToken) => {
+  if (!pendingSessionRefresh) {
+    pendingSessionRefresh = authApi
+      .refreshToken(refreshToken)
+      .finally(() => {
+        pendingSessionRefresh = null;
+      });
+  }
+
+  return pendingSessionRefresh;
+};
 /**
  * Trích xuất câu thông báo lỗi chi tiết từ Axios Error Response
  */

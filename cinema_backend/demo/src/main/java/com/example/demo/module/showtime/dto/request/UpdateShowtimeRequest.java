@@ -21,10 +21,6 @@ public class UpdateShowtimeRequest {
     @Future(message = "Start time must be in the future")
     private LocalDateTime startTime;
 
-    @NotNull(message = "End time is required")
-    @Future(message = "End time must be in the future")
-    private LocalDateTime endTime;
-
     @NotNull(message = "Base price is required")
     @Positive(message = "Base price must be greater than zero")
     private BigDecimal basePrice;

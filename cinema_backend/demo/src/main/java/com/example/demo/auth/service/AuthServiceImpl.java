@@ -103,15 +103,26 @@ public String verifyEmail(String token) {
     }
 
     // 3. Cập nhật trạng thái người dùng
-    User user = verification.getUser();
     
-    if (user.isEmailVerified()) {
-        throw new BadRequestException("Tài khoản này đã được xác thực trước đó!");
-    }
+User user = verification.getUser();
 
-    user.setStatus(AccountStatus.ACTIVE);
-    user.setEmailVerified(true);
-    userRepository.save(user);
+if (user.isEmailVerified()) {
+    throw new BadRequestException(
+            "Tài khoản này đã được xác thực trước đó!"
+    );
+}
+
+// Không cho xác thực email mở khóa tài khoản
+if (user.getStatus() != AccountStatus.PENDING_VERIFICATION) {
+    throw new BadRequestException(
+            "Trạng thái tài khoản không cho phép xác thực email!"
+    );
+}
+
+user.setStatus(AccountStatus.ACTIVE);
+user.setEmailVerified(true);
+userRepository.save(user);
+
 
     // 4. Xóa token sau khi đã kích hoạt thành công
     emailVerificationRepository.delete(verification);
@@ -148,11 +159,19 @@ public String verifyEmail(String token) {
             throw new BadRequestException("Email hoặc mật khẩu không chính xác!");
         }
 
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+        
+User user = userRepository.findByEmail(request.getEmail())
+        .orElseThrow(() ->
+                new BadRequestException("Tài khoản không hợp lệ!")
+        );
 
-        if (user.getStatus() == AccountStatus.PENDING_VERIFICATION) {
-            throw new BadRequestException("Tài khoản chưa được kích hoạt email!");
-        }
+// Chỉ cho phép tài khoản ACTIVE đăng nhập
+if (user.getStatus() != AccountStatus.ACTIVE) {
+    throw new BadRequestException(
+            "Tài khoản không được phép đăng nhập!"
+    );
+}
+
 
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
@@ -219,6 +238,15 @@ refreshTokenRepository.save(newToken);
         User user = userRepository.findByEmail(
         storedToken.getUser().getEmail()
 ).orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng!"));
+        
+        
+// Không cho tài khoản bị khóa làm mới phiên đăng nhập
+if (user.getStatus() != AccountStatus.ACTIVE) {
+    throw new BadRequestException(
+            "Tài khoản không được phép làm mới phiên đăng nhập!"
+    );
+}
+
         
         // Sinh Access Token mới chứa mã hóa Role
         String newAccessToken = tokenProvider.generateTokenFromUser(user);
