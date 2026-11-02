@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { showtimeApi } from '../api/showtimeApi';
@@ -77,7 +76,7 @@ export default function ShowtimeDetailPage() {
     );
   };
 
-  // Tạo booking và chuyển đến trang thanh toán
+  // Tạo booking và chuyển đến trang dịch vụ (F&B)
   const reserve = async () => {
     if (!isAuthenticated) {
       setMessage('Vui lòng đăng nhập để đặt vé.');
@@ -90,15 +89,34 @@ export default function ShowtimeDetailPage() {
     setMessage('');
 
     try {
-      const booking = await bookingApi.create({
+      const response = await bookingApi.create({
         showtimeId: Number(id),
         seatIds: selectedSeats,
       });
 
-      navigate(`/checkout/${booking.id}`);
+      // Hứng chính xác ID booking từ backend (hỗ trợ cả dạng bọc result/data hoặc trả về thẳng)
+      const bookingData = response?.result || response?.data || response;
+      const bookingId = bookingData?.id;
+
+      if (!bookingId) {
+        throw new Error('Không nhận được mã đơn hàng từ hệ thống.');
+      }
+
+      // Chuyển hướng sang trang dịch vụ và truyền kèm dữ liệu vé qua state
+      navigate(`/services`, {
+        state: {
+          bookingId: bookingId,
+          showtimeId: Number(id),
+          showtime,
+          selectedSeats,
+          selectedDetails,
+          totalSeatPrice: total,
+        },
+      });
     } catch (requestError) {
       setMessage(
         requestError.response?.data?.message ||
+          requestError.message ||
           'Không thể giữ ghế. Vui lòng kiểm tra lại sơ đồ.'
       );
 
@@ -291,12 +309,12 @@ export default function ShowtimeDetailPage() {
         <div className="seat-booking-bar">
           <div>
             <strong>
-              {selectedSeats.length} ghế đã chọn
+              {selectedSeats.length} ghế đã chọn: {selectedDetails.map(s => s.seatNumber || s.seatName || s.seatId).join(', ') || 'Chưa chọn'}
             </strong>
 
-            <span>
+            <div style={{ marginTop: '4px', fontSize: '18px', color: '#ff4d4f', fontWeight: 'bold' }}>
               {total.toLocaleString('vi-VN')} đ
-            </span>
+            </div>
           </div>
 
           <button
