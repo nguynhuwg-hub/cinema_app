@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/coupons")
@@ -17,23 +18,23 @@ public class CouponController {
 
     private final CouponService couponService;
 
-    // API cho Nhân viên: Lấy danh sách mã giảm giá (gọi đúng hàm getAllCouponsForStaff của Service)
     @GetMapping("/manage/list")
     public ResponseEntity<List<Coupon>> getAllCoupons() {
         return ResponseEntity.ok(couponService.getAllCouponsForStaff());
     }
 
-    // API cho Nhân viên: Thêm hoặc cập nhật mã giảm giá (gọi đúng hàm saveOrUpdateCoupon của Service)
     @PostMapping("/manage/save")
     public ResponseEntity<Coupon> saveCoupon(@RequestBody Coupon coupon) {
         return ResponseEntity.ok(couponService.saveOrUpdateCoupon(coupon));
     }
 
-    // API cho Khách hàng: Kiểm tra và áp dụng mã giảm giá
+    // Sửa lại nhận dữ liệu qua RequestBody dạng JSON để an toàn tuyệt đối
     @PostMapping("/validate")
-    public ResponseEntity<BigDecimal> validateAndApplyCoupon(
-            @RequestParam String code, 
-            @RequestParam BigDecimal totalAmount) {
+    public ResponseEntity<BigDecimal> validateAndApplyCoupon(@RequestBody Map<String, Object> requestData) {
+        String code = (String) requestData.get("code");
+        // Chuyển đổi an toàn sang BigDecimal cho totalAmount
+        BigDecimal totalAmount = new BigDecimal(requestData.get("totalAmount").toString());
+        
         BigDecimal discount = couponService.validateAndApplyCoupon(code, totalAmount);
         return ResponseEntity.ok(discount);
     }
