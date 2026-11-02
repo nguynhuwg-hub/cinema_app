@@ -1,11 +1,10 @@
 package com.example.demo.module.booking.entity;
 
+import com.example.demo.entity.Concession;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-
-import com.example.demo.entity.Concession;
 
 @Entity
 @Table(name = "booking_concessions")
@@ -14,12 +13,15 @@ import com.example.demo.entity.Concession;
 @AllArgsConstructor
 @Builder
 public class BookingConcession {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "booking_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Booking booking;
 
     @ManyToOne(fetch = FetchType.LAZY)

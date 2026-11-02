@@ -1,9 +1,16 @@
-
 package com.example.demo.module.booking.service;
 
 import com.example.demo.module.booking.entity.Payment;
 import com.example.demo.module.booking.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -25,7 +32,20 @@ public class VnpayQueryService {
     private final PaymentRepository payments;
     private final BookingService bookings;
 
-    private final RestClient restClient = RestClient.create();
+    private static final Logger log = LoggerFactory.getLogger(VnpayQueryService.class);
+    private final RestClient restClient = createRestClient();
+
+    private static RestClient createRestClient() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(10000);
+        return RestClient.builder().requestFactory(factory).build();
+    }
+
+    private static String diagnosticCode(Object value) {
+        String text = Objects.toString(value, "");
+        return text.matches("[a-zA-Z0-9_-]{1,32}") ? text : "UNKNOWN";
+    }
 
     @Value("${app.vnpay.tmn-code:}")
     private String tmnCode;
@@ -46,18 +66,21 @@ public class VnpayQueryService {
             Long bookingId,
             String serverIp
     ) {
+        if (tmnCode == null || tmnCode.isBlank() || hashSecret == null || hashSecret.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Chưa cấu hình mã merchant hoặc khóa VNPay trên backend.");
+        }
+
         Payment payment = payments.findByBookingId(bookingId)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Không tìm thấy giao dịch thanh toán."
-                        )
+                        new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "Không tìm thấy giao dịch thanh toán. Hãy mở thanh toán từ đơn trước.")
                 );
 
         if (payment.getVnpTxnRef() == null
                 || payment.getVnpCreateDate() == null) {
-            throw new IllegalStateException(
-                    "Giao dịch chưa có thông tin VNPay."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Đơn chưa có mã giao dịch VNPay. Hãy mở thanh toán từ đơn trước.");
         }
 
         String requestId =
@@ -98,18 +121,75 @@ public class VnpayQueryService {
 
         request.put("vnp_SecureHash", hmac(requestData));
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> response = restClient.post()
-                .uri(queryUrl)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(request)
-                .retrieve()
-                .body(Map.class);
+        // Metadata only: never log request bodies, HMACs or merchant secrets.
+        log.info(
+                "VNPay QueryDr request: bookingId={}, txnRef={}, transactionDate={}, createDate={}, ip={}",
+                bookingId,
+                diagnosticCode(payment.getVnpTxnRef()),
+                diagnosticCode(payment.getVnpCreateDate()),
+                createDate,
+                serverIp != null && serverIp.matches("[0-9a-fA-F:.]{1,64}")
+                        ? serverIp : "INVALID_IP"
+        );
 
-        if (response == null) {
-            throw new IllegalStateException(
-                    "VNPay không trả dữ liệu truy vấn."
+        Map<String, Object> response;
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> body = restClient.post()
+                    .uri(queryUrl)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(Map.class);
+            response = body;
+        } catch (RestClientResponseException ex) {
+            log.warn("VNPay QueryDr HTTP failure: bookingId={}, httpStatus={}",
+                    bookingId, ex.getStatusCode().value());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "VNPay từ chối truy vấn (HTTP " + ex.getStatusCode().value() + "). Chưa thể xác nhận giao dịch.");
+        } catch (ResourceAccessException ex) {
+            log.warn("VNPay QueryDr connection failure: bookingId={}, exception={}",
+                    bookingId, ex.getClass().getSimpleName());
+            throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT,
+                    "Không kết nối được VNPay hoặc truy vấn quá thời gian chờ. Vui lòng kiểm tra lại sau.");
+        } catch (RestClientException ex) {
+            log.warn("VNPay QueryDr invalid response: bookingId={}, exception={}",
+                    bookingId, ex.getClass().getSimpleName());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Phản hồi truy vấn VNPay không đúng định dạng. Chưa thể xác nhận giao dịch.");
+        }
+
+        if (response == null || response.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "VNPay không trả dữ liệu truy vấn. Vui lòng kiểm tra lại sau.");
+        }
+
+        // These values are untrusted diagnostics until signature verification succeeds.
+        // Do not log full responses, request payloads, hashes or merchant secrets.
+        String diagnosticResponseCode = diagnosticCode(response.get("vnp_ResponseCode"));
+        String receivedHash = Objects.toString(response.get("vnp_SecureHash"), "");
+        if (!receivedHash.matches("[a-fA-F0-9]{128}")) {
+            String gatewayMessage = Objects.toString(
+                    response.get("vnp_Message"),
+                    "Không có thông báo"
+            ).replaceAll("[\\r\\n\\t]", " ");
+
+            if (gatewayMessage.length() > 200) {
+                gatewayMessage = gatewayMessage.substring(0, 200);
+            }
+
+            log.warn(
+                    "VNPay QueryDr diagnostic: bookingId={}, unverifiedCode={}, message={}",
+                    bookingId,
+                    diagnosticResponseCode,
+                    gatewayMessage
             );
+
+            log.warn("VNPay QueryDr unsigned/invalid-hash response: bookingId={}, unverifiedCode={}, hashLength={}",
+                    bookingId, diagnosticResponseCode, receivedHash.length());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "VNPay trả phản hồi thiếu chữ ký hoặc sai định dạng chữ ký (mã phản hồi chưa xác thực: "
+                            + diagnosticResponseCode + "). Chưa thể xác nhận thanh toán.");
         }
 
         String[] signatureFields = {
@@ -139,19 +219,14 @@ public class VnpayQueryService {
 
         String expectedHash = hmac(String.join("|", values));
 
-        String receivedHash = Objects.toString(
-                response.get("vnp_SecureHash"), ""
-        );
-
-        if (!receivedHash.matches("[a-fA-F0-9]{128}")
-                || !MessageDigest.isEqual(
-                        expectedHash.getBytes(StandardCharsets.US_ASCII),
-                        receivedHash.toLowerCase(Locale.ROOT)
-                                .getBytes(StandardCharsets.US_ASCII)
-                )) {
-            throw new IllegalStateException(
-                    "Chữ ký phản hồi QueryDr không hợp lệ."
-            );
+        if (!MessageDigest.isEqual(
+                expectedHash.getBytes(StandardCharsets.US_ASCII),
+                receivedHash.toLowerCase(Locale.ROOT).getBytes(StandardCharsets.US_ASCII))) {
+            log.warn("VNPay QueryDr signature mismatch: bookingId={}, unverifiedCode={}, hashLength={}",
+                    bookingId, diagnosticResponseCode, receivedHash.length());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Chữ ký phản hồi QueryDr không khớp (mã phản hồi chưa xác thực: "
+                            + diagnosticResponseCode + "). Cần kiểm tra khóa sandbox và định dạng dữ liệu ký; đơn chưa được xác nhận.");
         }
 
         if (!tmnCode.equals(response.get("vnp_TmnCode"))
@@ -159,9 +234,8 @@ public class VnpayQueryService {
                         response.get("vnp_TxnRef")
                 )
                 || !"querydr".equals(response.get("vnp_Command"))) {
-            throw new IllegalStateException(
-                    "Thông tin phản hồi VNPay không khớp."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Thông tin phản hồi VNPay không khớp merchant hoặc đơn đặt vé.");
         }
 
         String responseCode = Objects.toString(
@@ -173,10 +247,11 @@ public class VnpayQueryService {
         );
 
         if (!"00".equals(responseCode)) {
-            return Map.of(
-                    "status", "QUERY_FAILED",
-                    "responseCode", responseCode
-            );
+            log.warn("VNPay QueryDr rejected: bookingId={}, verifiedCode={}",
+                    bookingId, diagnosticCode(responseCode));
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "VNPay không thực hiện được truy vấn (mã " + diagnosticCode(responseCode)
+                            + "). Chưa thể xác nhận thanh toán.");
         }
 
         if (!"00".equals(transactionStatus)) {
@@ -197,9 +272,8 @@ public class VnpayQueryService {
         if (!amount.matches("[0-9]{1,18}")
                 || !transactionNo.matches("[0-9]{1,15}")
                 || transactionNo.matches("0+")) {
-            throw new IllegalStateException(
-                    "Dữ liệu giao dịch VNPay không hợp lệ."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Số tiền hoặc mã giao dịch VNPay không hợp lệ.");
         }
 
         String result = bookings.applyVnpayPayment(

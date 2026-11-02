@@ -60,6 +60,9 @@ public class Booking {
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
     private List<Ticket> tickets;
 
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
-    private List<BookingConcession> concessions;
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private List<BookingConcession> concessions = new java.util.ArrayList<>();
 }

@@ -2,6 +2,7 @@ package com.example.demo.module.booking.service;
 
 import com.example.demo.module.booking.dto.BookingRequest;
 import com.example.demo.module.booking.dto.BookingResponse;
+import com.example.demo.module.booking.dto.BookingServicesRequest;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -10,6 +11,12 @@ public interface BookingService {
 
     BookingResponse createBooking(
             BookingRequest request,
+            String email
+    );
+
+    BookingResponse updateServices(
+            Long id,
+            BookingServicesRequest request,
             String email
     );
 
@@ -41,8 +48,8 @@ public interface BookingService {
     void expirePendingBookings();
 
     void saveVnpayTransaction(
-        Long bookingId,
-        String txnRef,
-        String createDate
-);
+            Long bookingId,
+            String txnRef,
+            String createDate
+    );
 }

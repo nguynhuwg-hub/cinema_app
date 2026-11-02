@@ -18,7 +18,22 @@ public class BookingResponse {
 
     private Long showtimeId;
 
+    // Tổng tiền cuối cùng phải thanh toán.
     private BigDecimal totalAmount;
+
+    private BigDecimal seatTotal;
+
+    // Tiền món trước khi giảm giá.
+    private BigDecimal foodTotal;
+
+    private BigDecimal discountAmount;
+
+    private String couponCode;
+
+    private List<BookingConcessionResponse> concessions;
+
+    // Có được phép sửa món và coupon hay không.
+    private boolean servicesEditable;
 
     private String status;
 

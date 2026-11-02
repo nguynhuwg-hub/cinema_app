@@ -39,6 +39,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingPricing pricing;
     private final ApplicationEventPublisher events;
     private final RedisSeatHoldService redisHolds;
+    private final BookingExtrasService extras;
 
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -173,6 +174,39 @@ public class BookingServiceImpl implements BookingService {
         showtimeSeats.saveAll(selected);
         tickets.saveAll(reserved);
 
+        return response(booking);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public BookingResponse updateServices(Long id, BookingServicesRequest request, String email) {
+        // Same showtime lock as payment/cancellation, so price cannot change mid-payment.
+        Booking booking = ownedLockedBooking(id, email);
+        LocalDateTime now = LocalDateTime.now();
+        expireForShowtime(booking.getShowtime().getId(), now);
+        if (booking.getStatus() != BookingStatus.PENDING
+                || booking.getHoldExpiresAt() == null || !booking.getHoldExpiresAt().isAfter(now)) {
+            throw new BadRequestException("Đơn đã hết hạn, đã hủy hoặc đã thanh toán.");
+        }
+        if (payments.findByBookingId(id).isPresent()) {
+            throw new BadRequestException("Đơn đã bắt đầu thanh toán. Không thể đổi món hoặc mã; hãy hủy đơn và đặt lại nếu cần.");
+        }
+        // Giá vé được lấy từ các vé đã lưu, không nhận tổng tiền từ frontend.
+        BigDecimal seatTotal = tickets.findByBookingIdOrderById(id).stream()
+                .map(Ticket::getPrice).reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Coupon áp dụng trên toàn đơn: tiền vé + tiền bắp nước.
+        var quote = extras.quote(request, id, seatTotal, now);
+        BigDecimal original = extras.checkedMoney(seatTotal.add(quote.foodTotal()));
+        booking.getConcessions().clear();
+        for (var line : quote.lines()) {
+            line.setBooking(booking);
+            booking.getConcessions().add(line);
+        }
+        booking.setCoupon(quote.coupon());
+        booking.setOriginalPrice(original);
+        booking.setDiscountAmount(quote.discount());
+        booking.setFinalAmount(extras.checkedMoney(original.subtract(quote.discount())));
+        bookings.flush();
         return response(booking);
     }
 
@@ -369,6 +403,7 @@ public class BookingServiceImpl implements BookingService {
         payment.setPaymentStatus(PaymentStatus.SUCCESS);
         payment.setPaidAt(LocalDateTime.now());
         booking.setStatus(BookingStatus.PAID);
+        extras.recordCouponUse(booking.getCoupon());
 
         for (Ticket ticket : reserved) {
             ShowtimeSeat seat = layout.stream()
@@ -584,7 +619,21 @@ public class BookingServiceImpl implements BookingService {
                         .toList()
         );
 
-        result.setConcessionIds(List.of());
+        List<BookingConcession> lines = booking.getConcessions() == null ? List.of() : booking.getConcessions();
+        result.setSeatTotal(reserved.stream().map(Ticket::getPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        result.setFoodTotal(lines.stream().map(line -> line.getPrice().multiply(BigDecimal.valueOf(line.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        result.setDiscountAmount(booking.getDiscountAmount() == null ? BigDecimal.ZERO : booking.getDiscountAmount());
+        result.setCouponCode(booking.getCoupon() == null ? null : booking.getCoupon().getCode());
+        result.setConcessionIds(lines.stream().map(line -> line.getConcession().getId()).toList());
+        result.setConcessions(lines.stream().map(line -> BookingConcessionResponse.builder()
+                .concessionId(line.getConcession().getId()).name(line.getConcession().getName())
+                .quantity(line.getQuantity()).unitPrice(line.getPrice())
+                .lineTotal(line.getPrice().multiply(BigDecimal.valueOf(line.getQuantity()))).build()).toList());
+        result.setServicesEditable(booking.getStatus() == BookingStatus.PENDING
+                && booking.getHoldExpiresAt() != null && booking.getHoldExpiresAt().isAfter(LocalDateTime.now())
+                && payments.findByBookingId(booking.getId()).isEmpty());
 
         result.setSeats(
                 reserved.stream()

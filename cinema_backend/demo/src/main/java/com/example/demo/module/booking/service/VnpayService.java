@@ -1,8 +1,8 @@
-
 package com.example.demo.module.booking.service;
 
 import com.example.demo.common.exception.BadRequestException;
 import com.example.demo.module.booking.dto.BookingResponse;
+import com.example.demo.module.booking.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -12,11 +12,14 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.*;
 
 @Service
@@ -24,6 +27,7 @@ import java.util.*;
 public class VnpayService {
 
     private final BookingService bookings;
+    private final PaymentRepository payments;
 
     @Value("${app.vnpay.tmn-code:}")
     private String tmnCode;
@@ -37,13 +41,20 @@ public class VnpayService {
     @Value("${app.vnpay.return-url:}")
     private String returnUrl;
 
+    @Value("${app.vnpay.sandbox-confirm-return:false}")
+    private boolean sandboxConfirmReturn;
+
     private static final DateTimeFormatter FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private static final ZoneId VNPAY_ZONE =
             ZoneId.of("Asia/Ho_Chi_Minh");
 
-    // Tạo URL thanh toán VNPay
+    public boolean isSandboxReturnEnabled() {
+        return sandboxConfirmReturn;
+    }
+
+    // Tạo URL thanh toán từ số tiền đã lưu ở backend.
     public Map<String, String> paymentUrl(
             Long bookingId,
             String email,
@@ -75,8 +86,6 @@ public class VnpayService {
         );
 
         params.put("vnp_CurrCode", "VND");
-
-        // Mã giao dịch cố định theo booking
         params.put("vnp_TxnRef", "BK" + bookingId);
 
         params.put(
@@ -89,7 +98,7 @@ public class VnpayService {
         params.put("vnp_ReturnUrl", returnUrl);
         params.put("vnp_IpAddr", clientIp);
 
-        // Giữ nguyên thời gian tạo cho cùng booking
+        // Giữ thời gian tạo ổn định cho cùng một booking.
         params.put(
                 "vnp_CreateDate",
                 FORMAT.format(
@@ -107,8 +116,6 @@ public class VnpayService {
                 )
         );
 
-        // MỚI: Lưu mã giao dịch và thời gian tạo vào MySQL
-        // Phương thức này đã được thêm vào BookingServiceImpl.
         bookings.saveVnpayTransaction(
                 bookingId,
                 params.get("vnp_TxnRef"),
@@ -124,7 +131,7 @@ public class VnpayService {
         );
     }
 
-    // Xác minh chữ ký từ VNPay Return hoặc IPN
+    // Kiểm tra chữ ký, merchant và định dạng mã đơn.
     public Long verifiedBookingId(Map<String, String> input) {
         configured();
 
@@ -181,7 +188,126 @@ public class VnpayService {
         }
     }
 
-    // Xử lý IPN từ VNPay
+    // Xác thực và xử lý kết quả Return trong chế độ sandbox.
+    public void confirmSandboxReturn(Map<String, String> params) {
+        if (!sandboxConfirmReturn) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Chưa bật xác nhận thanh toán sandbox qua Return."
+            );
+        }
+
+        URI gateway;
+
+        try {
+            gateway = URI.create(paymentUrl);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Địa chỉ VNPay không hợp lệ."
+            );
+        }
+
+        // Chỉ cho phép tính năng này với cổng sandbox.
+        if (!"https".equalsIgnoreCase(gateway.getScheme())
+                || !"sandbox.vnpayment.vn".equalsIgnoreCase(
+                        gateway.getHost()
+                )) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Chỉ cho phép xác nhận Return trong VNPay Sandbox."
+            );
+        }
+
+        Long bookingId = verifiedBookingId(params);
+
+        var payment = payments.findByBookingId(bookingId)
+                .orElseThrow(() -> new BadRequestException(
+                        "Không tìm thấy giao dịch của đơn."
+                ));
+
+        if (payment.getVnpTxnRef() == null
+                || !payment.getVnpTxnRef().equals(
+                        params.get("vnp_TxnRef")
+                )
+                || payment.getVnpCreateDate() == null) {
+            throw new BadRequestException(
+                    "Mã giao dịch không khớp thông tin đã lưu."
+            );
+        }
+
+        String rawAmount =
+                params.getOrDefault("vnp_Amount", "");
+
+        if (!rawAmount.matches("[0-9]{1,18}")
+                || payment.getAmount() == null
+                || payment.getAmount().compareTo(
+                        new BigDecimal(rawAmount).movePointLeft(2)
+                ) != 0) {
+            throw new BadRequestException(
+                    "Số tiền trả về không khớp đơn thanh toán."
+            );
+        }
+
+        if (params.containsKey("vnp_CurrCode")
+                && !"VND".equals(params.get("vnp_CurrCode"))) {
+            throw new BadRequestException(
+                    "Loại tiền thanh toán không hợp lệ."
+            );
+        }
+
+        boolean success =
+                "00".equals(params.get("vnp_ResponseCode"))
+                && "00".equals(
+                        params.get("vnp_TransactionStatus")
+                );
+
+        if (success) {
+            try {
+                DateTimeFormatter strictFormatter =
+                        DateTimeFormatter
+                                .ofPattern("uuuuMMddHHmmss")
+                                .withResolverStyle(
+                                        ResolverStyle.STRICT
+                                );
+
+                LocalDateTime paidAt = LocalDateTime.parse(
+                        params.getOrDefault("vnp_PayDate", ""),
+                        strictFormatter
+                );
+
+                LocalDateTime createdAt = LocalDateTime.parse(
+                        payment.getVnpCreateDate(),
+                        strictFormatter
+                );
+
+                if (paidAt.isBefore(createdAt)) {
+                    throw new BadRequestException(
+                            "Kết quả thanh toán thuộc giao dịch cũ."
+                    );
+                }
+            } catch (DateTimeParseException ex) {
+                throw new BadRequestException(
+                        "Thời gian giao dịch VNPay không hợp lệ."
+                );
+            }
+        }
+
+        // Dùng chung xử lý với IPN, không viết luồng cập nhật riêng.
+        // BookingService kiểm tra hạn giữ ghế, số tiền,
+        // trạng thái booking/payment và chống xử lý lặp.
+        Map<String, String> response = ipn(params);
+        String code = response.get("RspCode");
+
+        if (!"00".equals(code) && !"02".equals(code)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Chưa thể xác nhận kết quả sandbox, mã: " + code
+            );
+        }
+    }
+
+    // Xử lý thông báo giao dịch đã ký từ VNPay.
     public Map<String, String> ipn(Map<String, String> params) {
         Long id;
 
@@ -204,8 +330,9 @@ public class VnpayService {
                 || !transaction.matches("[0-9]{1,100}")
                 || !params.getOrDefault("vnp_ResponseCode", "")
                         .matches("[0-9]{2}")
-                || !params.getOrDefault("vnp_TransactionStatus", "")
-                        .matches("[0-9]{2}")) {
+                || !params.getOrDefault(
+                        "vnp_TransactionStatus", ""
+                ).matches("[0-9]{2}")) {
             return result("99", "Invalid callback");
         }
 
@@ -214,7 +341,9 @@ public class VnpayService {
 
         boolean success =
                 "00".equals(params.get("vnp_ResponseCode"))
-                && "00".equals(params.get("vnp_TransactionStatus"));
+                && "00".equals(
+                        params.get("vnp_TransactionStatus")
+                );
 
         if (success && transaction.matches("0+")) {
             return result(
@@ -252,10 +381,8 @@ public class VnpayService {
         );
     }
 
-    // Chuẩn hóa dữ liệu trước khi ký VNPay
-    public static String canonical(
-            Map<String, String> fields
-    ) {
+    // Chuẩn hóa tham số trước khi ký hoặc xác minh.
+    public static String canonical(Map<String, String> fields) {
         return new TreeMap<>(fields)
                 .entrySet()
                 .stream()
@@ -275,7 +402,6 @@ public class VnpayService {
         );
     }
 
-    // Tạo chữ ký HMAC SHA512
     private String hmac(String data) {
         try {
             Mac mac = Mac.getInstance("HmacSHA512");
@@ -291,12 +417,9 @@ public class VnpayService {
 
             return HexFormat.of().formatHex(
                     mac.doFinal(
-                            data.getBytes(
-                                    StandardCharsets.UTF_8
-                            )
+                            data.getBytes(StandardCharsets.UTF_8)
                     )
             );
-
         } catch (java.security.GeneralSecurityException ex) {
             throw new IllegalStateException(
                     "Không thể ký giao dịch VNPay.",
@@ -305,7 +428,6 @@ public class VnpayService {
         }
     }
 
-    // Kiểm tra cấu hình VNPay
     private void configured() {
         if (tmnCode.isBlank()
                 || hashSecret.isBlank()

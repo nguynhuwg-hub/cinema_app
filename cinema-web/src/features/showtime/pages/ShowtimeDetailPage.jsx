@@ -103,7 +103,7 @@ export default function ShowtimeDetailPage() {
       }
 
       // Chuyển hướng sang trang dịch vụ và truyền kèm dữ liệu vé qua state
-      navigate(`/services`, {
+      navigate(`/services?bookingId=${bookingId}`, {
         state: {
           bookingId: bookingId,
           showtimeId: Number(id),

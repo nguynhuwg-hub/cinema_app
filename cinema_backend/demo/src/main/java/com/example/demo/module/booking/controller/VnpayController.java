@@ -1,4 +1,3 @@
-
 package com.example.demo.module.booking.controller;
 
 import com.example.demo.module.booking.service.BookingService;
@@ -28,7 +27,7 @@ public class VnpayController {
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
 
-    // 1. Tạo URL thanh toán VNPay
+    // Tạo URL thanh toán cho đơn thuộc người đang đăng nhập.
     @PostMapping("/{bookingId}/url")
     public Map<String, String> paymentUrl(
             @PathVariable Long bookingId,
@@ -44,7 +43,7 @@ public class VnpayController {
         );
     }
 
-    // 2. Nhận IPN từ VNPay
+    // Nhận thông báo giao dịch từ VNPay.
     @GetMapping("/ipn")
     public Map<String, String> ipn(
             @RequestParam Map<String, String> params
@@ -52,26 +51,38 @@ public class VnpayController {
         return vnpay.ipn(params);
     }
 
-    // 3. Nhận Return URL và chuyển về trang Checkout
+    // Nhận kết quả khi trình duyệt quay về từ VNPay.
     @GetMapping("/return")
     public ResponseEntity<Void> browserReturn(
             @RequestParam Map<String, String> params
     ) {
-        Long id = vnpay.verifiedBookingId(params);
+        // Luôn xác minh chữ ký và mã merchant trước khi chuyển hướng.
+        Long bookingId = vnpay.verifiedBookingId(params);
+
+        boolean sandboxReturn = vnpay.isSandboxReturnEnabled();
+
+        if (sandboxReturn) {
+            // Xác nhận qua cùng xử lý thanh toán với IPN.
+            vnpay.confirmSandboxReturn(params);
+        }
 
         String destination =
                 frontendUrl.replaceAll("/+$", "")
                         + "/checkout/"
-                        + id
-                        + "?vnpay=returned";
+                        + bookingId
+                        + (sandboxReturn
+                                ? "?vnpay=sandbox-return"
+                                : "?vnpay=returned");
 
+        // Checkout đọc trạng thái từ backend.
+        // Chỉ khi PAID mới chuyển khách sang trang vé.
         return ResponseEntity
                 .status(HttpStatus.SEE_OTHER)
                 .location(URI.create(destination))
                 .build();
     }
 
-    // 4. Chủ động truy vấn trạng thái thanh toán qua VNPay QueryDr
+    // Chủ động truy vấn trạng thái giao dịch qua VNPay QueryDr.
     @PostMapping("/{bookingId}/verify")
     public Map<String, String> verifyPayment(
             @PathVariable Long bookingId,
@@ -80,8 +91,7 @@ public class VnpayController {
     ) {
         String email = requireEmail(authentication);
 
-        // Kiểm tra người gọi có quyền xem booking này.
-        // Không cho người dùng xác minh booking của người khác.
+        // Kiểm tra quyền sở hữu đơn trước khi truy vấn.
         bookings.getBookingById(bookingId, email);
 
         return vnpayQuery.queryPayment(

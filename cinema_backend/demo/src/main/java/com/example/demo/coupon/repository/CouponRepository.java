@@ -14,4 +14,28 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
 
     // Bổ sung hàm tìm kiếm không phân biệt hoa thường để Service sử dụng
     Optional<Coupon> findByCodeIgnoreCase(String code);
+
+    @org.springframework.data.jpa.repository.Lock(
+        jakarta.persistence.LockModeType.PESSIMISTIC_WRITE
+)
+@org.springframework.data.jpa.repository.Query("""
+        SELECT c FROM Coupon c
+        WHERE LOWER(c.code) = LOWER(:code)
+        """)
+java.util.Optional<Coupon> findByCodeForUpdate(
+        @org.springframework.data.repository.query.Param("code")
+        String code
+);
+
+@org.springframework.data.jpa.repository.Lock(
+        jakarta.persistence.LockModeType.PESSIMISTIC_WRITE
+)
+@org.springframework.data.jpa.repository.Query("""
+        SELECT c FROM Coupon c
+        WHERE c.id = :id
+        """)
+java.util.Optional<Coupon> findByIdForUpdate(
+        @org.springframework.data.repository.query.Param("id")
+        Long id
+);
 }
