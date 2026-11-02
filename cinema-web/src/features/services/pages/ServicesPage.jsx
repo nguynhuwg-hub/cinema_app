@@ -1,9 +1,9 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { couponApi } from "../../concession/api/couponApi";
 import { concessionApi } from "../../concession/api/concessionApi";
+import { bookingApi } from "../../booking/api/bookingApi";
 
-// Danh sách dự phòng để giao diện không bị trống nếu API chưa phản hồi
 const defaultMenu = [
   { id: 'classic', name: 'Bắp rang bơ cổ điển', detail: 'Bắp rang thơm nóng · size vừa', price: 59000, icon: '🍿', tag: 'BESTSELLER' },
   { id: 'caramel', name: 'Bắp caramel', detail: 'Caramel giòn ngọt · size lớn', price: 79000, icon: '🍿', tag: 'VỊ MỚI' },
@@ -11,33 +11,55 @@ const defaultMenu = [
   { id: 'duo', name: 'Combo xem phim đôi', detail: '2 bắp vừa + 2 nước ngọt', price: 149000, icon: '🎟️', tag: 'TIẾT KIỆM' },
 ];
 
-const services = [
-  { icon: '🎂', title: 'Tiệc phim riêng tư', detail: 'Tổ chức sinh nhật, buổi hẹn nhóm hoặc sự kiện nhỏ trong không gian phòng chiếu.' },
-  { icon: '🎁', title: 'Thẻ quà tặng CineF', detail: 'Gửi tặng một buổi xem phim và món bắp nước yêu thích cho người đặc biệt.' },
-  { icon: '✨', title: 'Hội viên CineF', detail: 'Theo dõi ưu đãi, nhận tin phim mới và tích lũy quyền lợi thành viên.' },
-];
-
 const formatPrice = (price) => `${Number(price || 0).toLocaleString('vi-VN')}đ`;
 
 const ServicesPage = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Nhận dữ liệu truyền từ trang chọn ghế sang qua state
+  const bookingData = location.state || {};
+  const { bookingId, showtime: passedShowtime } = bookingData;
+
+  const [bookingInfo, setBookingInfo] = useState(null);
   const [menu, setMenu] = useState(defaultMenu);
   const [cart, setCart] = useState({});
   const [checkoutMessage, setCheckoutMessage] = useState('');
 
-  // States quản lý mã giảm giá
   const [couponCodeInput, setCouponCodeInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [couponError, setCouponError] = useState('');
 
-  // Gọi API lấy dữ liệu món ăn từ Backend (concessionApi)
+  // Tải thông tin chi tiết đơn hàng (bao gồm danh sách ghế và tiền vé) từ backend dựa vào bookingId
+  useEffect(() => {
+    let active = true;
+
+    const fetchBookingDetails = async () => {
+      if (!bookingId) return;
+      try {
+        const data = await bookingApi.getById(bookingId);
+        if (active && data) {
+          const resolvedBooking = data.result || data.data || data;
+          setBookingInfo(resolvedBooking);
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải thông tin đơn hàng:", error);
+      }
+    };
+
+    fetchBookingDetails();
+
+    return () => {
+      active = false;
+    };
+  }, [bookingId]);
+
+  // Tải menu bắp nước từ backend
   useEffect(() => {
     const fetchConcessionsFromBackend = async () => {
       try {
-        console.log("Đang gọi API lấy menu F&B...");
         const data = await concessionApi.getMenu();
-        console.log("Dữ liệu menu nhận từ API:", data);
-
         const concessionList = Array.isArray(data) ? data : (data?.result || data?.content || []);
 
         if (concessionList.length > 0) {
@@ -50,16 +72,18 @@ const ServicesPage = () => {
             tag: item.status === 'ACTIVE' || item.isActive ? '' : 'ĐANG BÁN'
           }));
           setMenu(formattedMenu);
-        } else {
-          console.warn("API trả về danh sách trống, giữ nguyên menu mặc định.");
         }
       } catch (error) {
-        console.error("Lỗi chi tiết khi gọi API concession:", error);
+        console.error("Lỗi khi gọi API concession:", error);
       }
     };
 
     fetchConcessionsFromBackend();
   }, []);
+
+  // Lấy danh sách ghế và tổng tiền vé từ dữ liệu API đơn hàng (hoặc fallback về state truyền sang nếu có)
+  const selectedSeatsList = bookingInfo?.seats || bookingData.selectedDetails || [];
+  const totalSeatPrice = bookingInfo?.totalAmount || bookingData.totalSeatPrice || 0;
 
   const cartItems = useMemo(
     () => menu.filter((item) => cart[item.id]).map((item) => ({ ...item, quantity: cart[item.id] })),
@@ -67,9 +91,10 @@ const ServicesPage = () => {
   );
   
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const rawFoodPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  const finalPrice = Math.max(0, totalPrice - discountAmount);
+  const finalFoodPrice = Math.max(0, rawFoodPrice - discountAmount);
+  const grandTotal = totalSeatPrice + finalFoodPrice;
 
   const addToCart = (id) => {
     setCart((current) => ({ ...current, [id]: (current[id] || 0) + 1 }));
@@ -93,14 +118,14 @@ const ServicesPage = () => {
       return;
     }
 
-    if (totalPrice <= 0) {
+    if (rawFoodPrice <= 0) {
       setCouponError('Giỏ hàng đang trống!');
       return;
     }
 
     try {
       setCouponError('');
-      const discount = await couponApi.validateCoupon(couponCodeInput.trim().toUpperCase(), totalPrice);
+      const discount = await couponApi.validateCoupon(couponCodeInput.trim().toUpperCase(), rawFoodPrice);
       const numericDiscount = Number(discount);
 
       if (numericDiscount > 0) {
@@ -110,14 +135,13 @@ const ServicesPage = () => {
       } else {
         setDiscountAmount(0);
         setAppliedCoupon(null);
-        setCouponError('Mã không hợp lệ, chưa đến hạn hoặc chưa đạt giá trị đơn hàng tối thiểu!');
+        setCouponError('Mã không hợp lệ hoặc chưa đạt giá trị đơn hàng tối thiểu!');
       }
     } catch (error) {
-      console.error("Lỗi áp dụng mã giảm giá:", error);
       setDiscountAmount(0);
       setAppliedCoupon(null);
       const serverMsg = error.response?.data;
-      setCouponError(typeof serverMsg === 'string' ? serverMsg : 'Mã giảm giá không hợp lệ hoặc không tồn tại.');
+      setCouponError(typeof serverMsg === 'string' ? serverMsg : 'Mã giảm giá không hợp lệ.');
     }
   };
 
@@ -128,19 +152,42 @@ const ServicesPage = () => {
     setCouponError('');
   };
 
+  const handleProceedToCheckout = () => {
+    if (!bookingId) {
+      setCheckoutMessage('Không tìm thấy thông tin đặt vé. Vui lòng chọn lại ghế từ đầu.');
+      return;
+    }
+
+    navigate(`/checkout/${bookingId}`, {
+      state: {
+        bookingId,
+        showtime: passedShowtime,
+        selectedDetails: selectedSeatsList,
+        totalSeatPrice,
+        cartItems,
+        foodTotal: finalFoodPrice,
+        grandTotal,
+        appliedCoupon,
+        discountAmount,
+      },
+    });
+  };
+
   return (
     <div className="page-shell services-page">
+      {!bookingId && (
+        <div style={{ background: '#21262d', padding: '10px 20px', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ color: '#e3b341', fontSize: '14px' }}>⚠️ Bạn chưa chọn ghế. Bạn đang xem menu ở chế độ tự do.</span>
+          <Link to="/" style={{ color: '#58a6ff', fontSize: '14px', textDecoration: 'none' }}>Về trang chủ →</Link>
+        </div>
+      )}
+
       <section className="services-hero">
         <div className="services-hero-copy">
           <p className="eyebrow">CINEF MOMENTS · MORE THAN A MOVIE</p>
           <h1>Thêm chút vui,<br /><span>trọn buổi xem.</span></h1>
           <p>Bắp rang vừa nổ, thức uống mát lạnh và những trải nghiệm được chuẩn bị cho buổi hẹn điện ảnh đáng nhớ.</p>
           <a href="#snack-menu" className="services-hero-button">Khám phá bắp & nước <span>↓</span></a>
-        </div>
-        <div className="services-hero-visual" aria-hidden="true">
-          <div className="snack-sparkle sparkle-one">✦</div><div className="snack-sparkle sparkle-two">✧</div>
-          <div className="hero-popcorn">🍿</div><div className="hero-drink">🥤</div>
-          <span className="hero-stamp">MOVIE<br />NIGHT</span>
         </div>
       </section>
 
@@ -172,6 +219,16 @@ const ServicesPage = () => {
               <span>{totalItems}</span>
             </div>
 
+            {/* Hiển thị thông tin ghế đã chọn ở trang dịch vụ */}
+            <div style={{ background: '#161b22', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #30363d' }}>
+              <div style={{ fontSize: '12px', color: '#8b949e', marginBottom: '4px' }}>🎟️ Ghế đã chọn ({selectedSeatsList.length}):</div>
+              <div style={{ fontSize: '14px', color: '#c9d1d9', fontWeight: 'bold' }}>
+                {selectedSeatsList.length > 0 
+                  ? selectedSeatsList.map(s => s.seatNumber || s.seatName || s.seatId).join(', ') 
+                  : 'Chưa có ghế nào'}
+              </div>
+            </div>
+
             {cartItems.length ? (
               <div className="snack-cart-items">
                 {cartItems.map((item) => (
@@ -187,7 +244,7 @@ const ServicesPage = () => {
                 ))}
               </div>
             ) : (
-              <div className="empty-cart"><span>🧺</span><p>Giỏ của bạn đang trống.</p><small>Chọn một món thật ngon nhé!</small></div>
+              <div className="empty-cart"><span>🧺</span><p>Giỏ đồ ăn đang trống.</p><small>Có thể bỏ qua nếu không mua thêm!</small></div>
             )}
 
             <div style={{ marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '15px' }}>
@@ -199,26 +256,14 @@ const ServicesPage = () => {
                     placeholder="Nhập mã (VD: SPRING)" 
                     value={couponCodeInput}
                     onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
-                    style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', outline: 'none', fontSize: '14px' }}
+                    style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #30363d', background: '#0d1117', color: '#fff', fontSize: '14px' }}
                   />
-                  <button 
-                    type="button"
-                    onClick={handleApplyCoupon}
-                    style={{ background: '#ff4d4f', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
-                  >
-                    Áp dụng
-                  </button>
+                  <button type="button" onClick={handleApplyCoupon} style={{ background: '#ff4d4f', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Áp dụng</button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0d1117', padding: '8px 12px', borderRadius: '6px', border: '1px solid #2ea043' }}>
                   <span style={{ color: '#2ea043', fontWeight: 'bold', fontSize: '13px' }}>Đang áp dụng: {appliedCoupon}</span>
-                  <button 
-                    type="button"
-                    onClick={handleRemoveCoupon}
-                    style={{ background: 'transparent', color: '#f85149', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
-                  >
-                    Gỡ bỏ
-                  </button>
+                  <button type="button" onClick={handleRemoveCoupon} style={{ background: 'transparent', color: '#f85149', border: 'none', cursor: 'pointer', fontSize: '12px' }}>Gỡ bỏ</button>
                 </div>
               )}
               {couponError && <p style={{ fontSize: '12px', marginTop: '6px', color: '#f85149' }}>{couponError}</p>}
@@ -226,44 +271,38 @@ const ServicesPage = () => {
 
             <div style={{ marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div className="cart-total" style={{ border: 'none', padding: 0, margin: 0 }}>
-                <span>Tạm tính</span>
-                <span style={{ color: discountAmount > 0 ? '#888' : '#fff', textDecoration: discountAmount > 0 ? 'line-through' : 'none' }}>
-                  {formatPrice(totalPrice)}
-                </span>
+                <span>Tiền vé ({selectedSeatsList.length} ghế)</span>
+                <span>{formatPrice(totalSeatPrice)}</span>
+              </div>
+
+              <div className="cart-total" style={{ border: 'none', padding: 0, margin: 0 }}>
+                <span>Tiền đồ ăn</span>
+                <span>{formatPrice(rawFoodPrice)}</span>
               </div>
 
               {discountAmount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#2ea043' }}>
-                  <span>Giảm giá</span>
+                  <span>Giảm giá F&B</span>
                   <span>-{formatPrice(discountAmount)}</span>
                 </div>
               )}
 
-              <div className="cart-total" style={{ border: 'none', padding: 0, margin: '4px 0 0 0', fontSize: '18px' }}>
+              <div className="cart-total" style={{ border: 'none', padding: '4px 0 0 0', margin: 0, fontSize: '18px' }}>
                 <span style={{ color: '#fff', fontWeight: 'bold' }}>Tổng thanh toán</span>
-                <strong style={{ color: '#ff4d4f' }}>{formatPrice(finalPrice)}</strong>
+                <strong style={{ color: '#ff4d4f' }}>{formatPrice(grandTotal)}</strong>
               </div>
             </div>
 
             <button 
               type="button" 
               className="checkout-button" 
-              disabled={!totalItems} 
-              onClick={() => setCheckoutMessage('Đây là bản mô phỏng giao diện. Đơn hàng chưa được gửi đến rạp.')}
+              onClick={handleProceedToCheckout}
             >
-              Xem trước đơn hàng <span>→</span>
+              Tiếp tục đến thanh toán <span>→</span>
             </button>
             
             {checkoutMessage && <p className="checkout-demo-message" role="status">{checkoutMessage}</p>}
-            <p className="cart-demo-note">Bản demo giao diện · Chưa kết nối đặt món hoặc thanh toán.</p>
           </aside>
-        </div>
-      </section>
-
-      <section className="extra-services-section">
-        <div className="services-section-heading"><div><p className="eyebrow">CINEF, THE WAY YOU LIKE</p><h2>Thêm trải nghiệm, thêm kỷ niệm</h2></div></div>
-        <div className="extra-services-grid">
-          {services.map((service) => <article className="extra-service-card" key={service.title}><span>{service.icon}</span><h3>{service.title}</h3><p>{service.detail}</p><Link to="/login">Tìm hiểu thêm <span aria-hidden="true">↗</span></Link></article>)}
         </div>
       </section>
     </div>

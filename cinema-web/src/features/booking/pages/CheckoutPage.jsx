@@ -1,10 +1,10 @@
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Link,
   useNavigate,
   useParams,
   useSearchParams,
+  useLocation,
 } from 'react-router-dom';
 
 import { bookingApi } from '../api/bookingApi';
@@ -41,6 +41,7 @@ const getErrorMessage = (error, fallback) => {
 export default function CheckoutPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { isAuthenticated } = useAuth();
 
@@ -50,18 +51,21 @@ export default function CheckoutPage() {
   const [verifying, setVerifying] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
+  // Lấy dữ liệu đồ ăn, coupon và tổng tiền được truyền từ ServicesPage qua state
+  const serviceState = location.state || {};
+  const cartItems = serviceState.cartItems || [];
+  const foodTotal = serviceState.foodTotal || 0;
+  const discountAmount = serviceState.discountAmount || 0;
+  const appliedCoupon = serviceState.appliedCoupon || null;
+  const passedSeatPrice = serviceState.totalSeatPrice || 0;
+  const passedGrandTotal = serviceState.grandTotal || 0;
+
   // Khóa thao tác thủ công và chia sẻ request đang chạy.
   const verifyingRef = useRef(false);
   const inFlightVerifyRef = useRef(null);
 
   const returnedFromVnpay =
     searchParams.get('vnpay') === 'returned';
-
-  const loadBooking = async () => {
-    const data = await bookingApi.getById(id);
-    setBooking(data);
-    return data;
-  };
 
   // Tải trạng thái booking và cập nhật định kỳ.
   useEffect(() => {
@@ -116,7 +120,6 @@ export default function CheckoutPage() {
   }, [id, isAuthenticated, navigate]);
 
   // Chia sẻ cùng một Promise giữa các lần chạy Effect (kể cả StrictMode).
-  // Không đánh dấu "đã xác minh" vĩnh viễn: người dùng luôn có thể thử lại.
   const verifyPaymentOnce = useCallback(() => {
     if (inFlightVerifyRef.current?.id === id) {
       return inFlightVerifyRef.current.promise;
@@ -132,8 +135,6 @@ export default function CheckoutPage() {
 
     inFlightVerifyRef.current = { id, promise };
 
-    // Gắn handler ngay để mọi kết quả (kể cả lỗi) đều giải phóng loading.
-    // Không biến Promise gốc thành Promise bị nuốt lỗi.
     promise.then(
       () => {
         if (inFlightVerifyRef.current?.promise === promise) {
@@ -181,7 +182,6 @@ export default function CheckoutPage() {
     );
 
     return () => {
-      // Chỉ ngắt cập nhật của Effect cũ, không chặn request dùng chung.
       active = false;
     };
   }, [isAuthenticated, returnedFromVnpay, verifyPaymentOnce, applyVerifyResult]);
@@ -283,6 +283,10 @@ export default function CheckoutPage() {
     )
   );
 
+  // Tính toán tiền vé, tiền đồ ăn và tổng tiền cuối cùng
+  const seatTotal = passedSeatPrice || booking.totalAmount || 0;
+  const computedGrandTotal = passedGrandTotal > 0 ? passedGrandTotal : (seatTotal + foodTotal);
+
   return (
     <div className="page-shell">
       <Link
@@ -333,8 +337,42 @@ export default function CheckoutPage() {
           </p>
         ))}
 
-        <h2>
-          Tổng tiền: {money(booking.totalAmount)}
+        {/* Hiển thị danh sách đồ ăn & thức uống nếu có */}
+        {cartItems.length > 0 && (
+          <>
+            <h2 style={{ marginTop: '20px' }}>Đồ ăn & Thức uống</h2>
+            {cartItems.map((item) => (
+              <p key={item.id}>
+                <strong>{item.name}</strong> (x{item.quantity}) — {money(item.price * item.quantity)}
+              </p>
+            ))}
+          </>
+        )}
+
+        {/* Bảng chi tiết các khoản tiền */}
+        <div style={{ marginTop: '15px', borderTop: '1px solid #30363d', paddingTop: '12px' }}>
+          <p style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span>Tiền vé:</span>
+            <span>{money(seatTotal)}</span>
+          </p>
+
+          {foodTotal > 0 && (
+            <p style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span>Tiền đồ ăn:</span>
+              <span>{money(foodTotal)}</span>
+            </p>
+          )}
+
+          {appliedCoupon && (
+            <p style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: '#2ea043' }}>
+              <span>Mã giảm giá ({appliedCoupon}):</span>
+              <span>-{money(discountAmount)}</span>
+            </p>
+          )}
+        </div>
+
+        <h2 style={{ marginTop: '12px', borderTop: '1px solid #30363d', paddingTop: '12px' }}>
+          Tổng thanh toán: {money(computedGrandTotal)}
         </h2>
 
         {verifying && (
