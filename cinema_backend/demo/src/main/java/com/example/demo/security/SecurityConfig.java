@@ -1,4 +1,3 @@
-
 package com.example.demo.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -77,12 +76,18 @@ public class SecurityConfig {
                 ).permitAll()
 
                 // VNPay callbacks
-                // Chữ ký VNPay vẫn phải được xác thực
-                // tại tầng xử lý callback
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/v1/payments/vnpay/ipn",
                     "/api/v1/payments/vnpay/return"
+                ).permitAll()
+
+                // -------------------------------------------------------------
+                // BỔ SUNG: Cho phép khách hàng xem menu bắp nước công khai
+                // -------------------------------------------------------------
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/concessions/**"
                 ).permitAll()
 
                 // Booking
@@ -121,7 +126,7 @@ public class SecurityConfig {
                     "/ws-cinema/**"
                 ).permitAll()
 
-                // Cinema APIs
+                // Cinema APIs (Giữ nguyên các API cũ của bạn)
                 .requestMatchers(
                     "/api/cinemas/**",
                     "/api/cities/**",
@@ -147,9 +152,7 @@ public class SecurityConfig {
                     "/api/v1/showtimes/**"
                 ).permitAll()
 
-                // Movie management:
-                // Yêu cầu đăng nhập, quyền chi tiết
-                // được kiểm tra tại Controller/Service
+                // Movie management
                 .requestMatchers(
                     "/api/v1/movies/**"
                 ).authenticated()

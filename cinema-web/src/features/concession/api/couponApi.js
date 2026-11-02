@@ -24,10 +24,11 @@ export const couponApi = {
     },
     
     validateCoupon: async (code, totalAmount) => {
-        const response = await axios.post(`${API_BASE_URL}/validate`, null, {
-            ...getAuthHeaders(),
-            params: { code, totalAmount }
-        });
+        // Gửi dưới dạng JSON Body thay vì params trên URL để đồng bộ với Backend
+        const response = await axios.post(`${API_BASE_URL}/validate`, {
+            code,
+            totalAmount
+        }, getAuthHeaders());
         return response.data;
     }
 };
